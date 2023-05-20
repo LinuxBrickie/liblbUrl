@@ -1,6 +1,3 @@
-#ifndef LIB_LB_URL_BASEHANDLER_H
-#define LIB_LB_URL_BASEHANDLER_H
-
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
 
@@ -18,32 +15,33 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Private header
+#include <gtest/gtest.h>
 
-#include <curl/curl.h>
+#include "../src/HttpHandler.h"
 
 
-namespace lb
+TEST(HttpHandler, Config)
 {
+  struct ResponseCallback
+  {
+    void operator()( lb::url::ResponseCode rc, lb::url::http::Response r )
+    {
+    }
+  } responseCallback;
 
+  lb::url::HttpHandler httpHandler
+  {
+    {
+      lb::url::http::Request::Method::ePost,
+      "a/test/url.suffix", // URL
+      {}, // headers
+      {}, // POST data
+      {}, // MIME data
+    },
+    responseCallback
+  };
 
-namespace url
-{
-
-
-/** \brief Abstract base for the logic associated with each request type. */
-struct BaseHandler
-{
-  virtual ~BaseHandler() = default;
-  virtual bool setOptions( CURL* ) = 0;
-  virtual void freeResources( CURL* ) = 0;
-};
-
-
-} // End of namespace url
-
-
-} // End of namespace lb
-
-
-#endif // LIB_LB_URL_BASEHANDLER_H
+  // TODO - Unfortunately libcurl has no way to query the options set on the
+  //        easy handle. That would have made an ideal unit test :( If this
+  //        changes we can query for stuff here (and expand the request).
+}

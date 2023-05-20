@@ -84,19 +84,18 @@ void HttpHandler::respond( ResponseCode rc, std::string receivedData )
     response.content.push_back( '\0' );
   }
 
-  long responseCode;
-  const CURLcode cc{ curl_easy_getinfo( easyHandle, CURLINFO_RESPONSE_CODE, &responseCode ) };
+  long httpResponseCode;
+  const CURLcode cc{ curl_easy_getinfo( easyHandle, CURLINFO_RESPONSE_CODE, &httpResponseCode ) };
   switch( cc )
   {
   case CURLE_OK:
-    response.code = responseCode;
+    response.code = httpResponseCode;
+    responseCallback( rc, std::move( response ) );
     break;
   default:
     responseCallback( ResponseCode::eFailure, {} );
     break;
   }
-
-  responseCallback( rc, std::move( response ) );
 }
 
 

@@ -19,7 +19,6 @@
 */
 
 #include "../mime/MimePart.h"
-#include "../ResponseCode.h"
 
 #include <functional>
 #include <string>
@@ -40,6 +39,8 @@ namespace http
 
 struct Request
 {
+  Request() = default;
+
   // Default move and copy construction and assignment. Copy forbidden.
   Request( Request&& ) = default;
   Request& operator=( Request& ) = default;

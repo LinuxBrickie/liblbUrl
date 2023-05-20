@@ -93,10 +93,6 @@ bool MimeHelper::setOptions( CURL* easyHandle )
   return true;
 }
 
-void MimeHelper::freeResources( CURL* )
-{
-}
-
 // static
 size_t MimeHelper::dataRead( char* buffer, size_t size, size_t nitems, void* userData )
 {

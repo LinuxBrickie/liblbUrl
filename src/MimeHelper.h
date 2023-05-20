@@ -43,7 +43,6 @@ struct MimeHelper
   ~MimeHelper();
 
   bool setOptions( CURL* );
-  void freeResources( CURL* );
 
   // C-style callbacks used by libcurl. The void* is the address of the relevant mime::MimePart::DataReader instance.
   static size_t dataRead( char *buffer, size_t size, size_t nitems, void* userData );
