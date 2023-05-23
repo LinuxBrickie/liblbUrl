@@ -1,6 +1,3 @@
-#ifndef LIB_LB_URL_HTTP_RESPONSE_H
-#define LIB_LB_URL_HTTP_RESPONSE_H
-
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
 
@@ -18,50 +15,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "../ResponseCode.h"
+#ifndef LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
+#define LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
 
-#include <functional>
 #include <string>
-#include <vector>
 
 
-namespace lb
-{
+const int PORT{ 4567 };
+const std::string HOST{ "localhost" };
+const std::string HOST_COLON_PORT{ HOST + ':' + std::to_string( PORT ) };
 
 
-namespace url
-{
-
-
-namespace http
-{
-
-
-struct Response
-{
-  Response() = default;
-
-  // Default move construction and move assignment. Copy forbidden.
-  Response( Response&& ) = default;
-  Response& operator=( Response& ) = default;
-  Response( const Response& ) = delete;
-  Response& operator=( const Response& ) = delete;
-
-  using Callback = std::function<void(ResponseCode, Response)>;
-
-  unsigned int code; //!< e.g. 200, 404, etc.
-  std::string content;
-};
-
-
-
-} // End of namespace http
-
-
-} // End of namespace url
-
-
-} // End of namespace lb
-
-
-#endif // LIB_LB_URL_HTTP_RESPONSE_H
+#endif // LIB_LB_URL_GTEST_CONNECTIONDETAILS_H

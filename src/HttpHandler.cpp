@@ -78,11 +78,6 @@ void HttpHandler::respond( ResponseCode rc, std::string receivedData )
   http::Response response;
 
   response.content = std::move( receivedData );
-  // Should not be required, just for safety.
-  if ( !response.content.empty() && response.content.back() != '\0')
-  {
-    response.content.push_back( '\0' );
-  }
 
   long httpResponseCode;
   const CURLcode cc{ curl_easy_getinfo( easyHandle, CURLINFO_RESPONSE_CODE, &httpResponseCode ) };
