@@ -25,7 +25,12 @@ httpd::Server::Response mockServerResponse( std::string url,
                                             httpd::Server::Version version,
                                             std::string requestPayload )
 {
-  httpd::Server::Response response;
+  // Initialise to something clearly wrong and use this if we don't match the URL.
+  httpd::Server::Response response
+  {
+    0U,
+    "Invalid test URL"
+  };
 
   switch ( method )
   {
@@ -33,8 +38,14 @@ httpd::Server::Response mockServerResponse( std::string url,
     response.content = "Invalid HTTP method";
     break;
   case httpd::Server::Method::eGet:
-    response = GET_ExpectedMockResponse;
+  {
+    const auto I{ GETExpectedMockResponses.find( url ) };
+    if ( I != GETExpectedMockResponses.end() )
+    {
+      response = I->second;
+    }
     break;
+  }
   case httpd::Server::Method::eHead:
     break;
   case httpd::Server::Method::ePost:

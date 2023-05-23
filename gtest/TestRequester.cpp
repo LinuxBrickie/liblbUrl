@@ -28,18 +28,22 @@
 
 TEST(Requester, HttpGet)
 {
-  std::promise<lb::url::http::Response> promise;
-
   lb::url::Requester requester;
-  requester.makeRequest( { lb::url::http::Request::Method::eGet
-                         , "http://" + HOST_COLON_PORT + "/test/url/http/get" }
-                       , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+
+  for ( const auto&[ url, expectedResponse ] : GETExpectedMockResponses )
   {
-    promise.set_value( std::move( r ) );
-  } );
+    std::promise<lb::url::http::Response> promise;
 
-  lb::url::http::Response mockResponse{ promise.get_future().get() };
+    requester.makeRequest( { lb::url::http::Request::Method::eGet
+                           , "http://" + HOST_COLON_PORT + url }
+                         , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+    {
+      promise.set_value( std::move( r ) );
+    } );
 
-  EXPECT_EQ( mockResponse.code   , GET_ExpectedMockResponse.code );
-  EXPECT_EQ( mockResponse.content, GET_ExpectedMockResponse.content );
+    lb::url::http::Response actualResponse{ promise.get_future().get() };
+
+    EXPECT_EQ( actualResponse.code   , expectedResponse.code );
+    EXPECT_EQ( actualResponse.content, expectedResponse.content );
+  }
 }

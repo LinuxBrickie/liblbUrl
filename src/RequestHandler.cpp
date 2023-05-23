@@ -89,7 +89,7 @@ size_t RequestHandler::writeCallback( char* data, size_t size, size_t numBytes, 
 
 void RequestHandler::processReceivedData( const char* data, size_t numBytes )
 {
-  receivedData.append( { data, numBytes } );
+  receivedData.append( data, numBytes );
 }
 
 
