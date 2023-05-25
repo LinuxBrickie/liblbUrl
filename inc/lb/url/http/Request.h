@@ -41,11 +41,11 @@ struct Request
 {
   Request() = default;
 
-  // Default move and copy construction and assignment. Copy forbidden.
+  // Default move/copy construction and assignment.
   Request( Request&& ) = default;
   Request& operator=( Request& ) = default;
-  Request( const Request& ) = delete;
-  Request& operator-( const Request& ) = delete;
+  Request( const Request& ) = default;
+  Request& operator=( const Request& ) = default;
 
   enum class Method
   {

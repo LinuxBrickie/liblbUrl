@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "TestRequester.h"
+#include "TestRequesterHttpGet.h"
 
 #include <gtest/gtest.h>
 

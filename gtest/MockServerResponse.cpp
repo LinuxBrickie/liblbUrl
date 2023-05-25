@@ -17,7 +17,8 @@
 
 #include "MockServerResponse.h"
 
-#include "TestRequester.h"
+#include "TestRequesterHttpGet.h"
+#include "TestRequesterHttpPost.h"
 
 
 httpd::Server::Response mockServerResponse( std::string url,
@@ -49,7 +50,14 @@ httpd::Server::Response mockServerResponse( std::string url,
   case httpd::Server::Method::eHead:
     break;
   case httpd::Server::Method::ePost:
+  {
+    const auto I{ POSTTestData.find( url ) };
+    if ( I != POSTTestData.end() )
+    {
+      response = I->second.response;
+    }
     break;
+  }
   case httpd::Server::Method::ePut:
     break;
   case httpd::Server::Method::eDelete:

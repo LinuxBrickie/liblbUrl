@@ -12,6 +12,12 @@ The main library dependencies are
 In addition the gtest binary dependencies are
 - libmicrohttpd
 
+## Licensing
+
+As the copyright holder I am happy to consider alternative licensing if
+the GPL-3.0-or-later licence does not suit you. Please feel free to reach
+out to me at fotheringham.paul@gmail.com.
+
 ## Usage
 
 Request URLs using an instance of the Requester class. Your callback will be

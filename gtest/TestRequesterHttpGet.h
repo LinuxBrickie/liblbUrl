@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef LIB_LB_URL_GTEST_TESTREQUESTER_H
-#define LIB_LB_URL_GTEST_TESTREQUESTER_H
+#ifndef LIB_LB_URL_GTEST_TESTREQUESTERHTTPGET_H
+#define LIB_LB_URL_GTEST_TESTREQUESTERHTTPGET_H
 
 #include <unordered_map>
 #include <string>
@@ -78,4 +78,4 @@ const std::unordered_map<std::string, httpd::Server::Response> GETExpectedMockRe
 };
 
 
-#endif // LIB_LB_URL_GTEST_TESTREQUESTER_H
+#endif // LIB_LB_URL_GTEST_TESTREQUESTERHTTPGET_H

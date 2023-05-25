@@ -15,33 +15,32 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "TestRequesterHttpPost.h"
+
 #include <gtest/gtest.h>
 
-#include "../src/HttpHandler.h"
+#include <future>
+
+#include <lb/url/Requester.h>
 
 
-TEST(HttpHandler, Config)
+TEST(Requester, HttpPost)
 {
-  struct ResponseCallback
-  {
-    void operator()( lb::url::ResponseCode rc, lb::url::http::Response r )
-    {
-    }
-  } responseCallback;
+  lb::url::Requester requester;
 
-  lb::url::HttpHandler httpHandler
+  for ( const auto&[ url, testData ] : POSTTestData )
   {
-    {
-      lb::url::http::Request::Method::ePost,
-      "a/test/url.suffix", // URL
-      {}, // headers
-      "Some random data", // POST data
-      {}, // MIME data
-    },
-    responseCallback
-  };
+    std::promise<lb::url::http::Response> promise;
 
-  // TODO - Unfortunately libcurl has no way to query the options set on the
-  //        easy handle. That would have made an ideal unit test :( If this
-  //        changes we can query for stuff here (and expand the request).
+    requester.makeRequest( testData.request
+                         , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+    {
+      promise.set_value( std::move( r ) );
+    } );
+
+    lb::url::http::Response actualResponse{ promise.get_future().get() };
+
+    EXPECT_EQ( actualResponse.code   , testData.response.code );
+    EXPECT_EQ( actualResponse.content, testData.response.content );
+  }
 }
