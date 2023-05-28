@@ -34,6 +34,8 @@ std::string toString( ResponseCode c )
     return "Aborted";
   case ResponseCode::eSendFailure:
     return "Failed to send";
+  case ResponseCode::eFailure:
+    return "Failed";
   case ResponseCode::eSuccess:
     return "Success";
   case ResponseCode::eTimedOut:

@@ -24,23 +24,34 @@
 #include <lb/url/Requester.h>
 
 
+// Printer for correct gtest output.
+namespace lb { namespace url {
+  void PrintTo( const ResponseCode& rc, std::ostream* os )
+  {
+    *os << "ResponseCode " << toString( rc );
+  }
+} }
+
+
 TEST(Requester, HttpPost)
 {
   lb::url::Requester requester;
 
   for ( const auto&[ url, testData ] : POSTTestData )
   {
-    std::promise<lb::url::http::Response> promise;
+    std::promise< std::pair< lb::url::ResponseCode
+                           , lb::url::http::Response > > promise;
 
     requester.makeRequest( testData.request
                          , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
     {
-      promise.set_value( std::move( r ) );
+      promise.set_value( { rc, std::move( r ) } );
     } );
 
-    lb::url::http::Response actualResponse{ promise.get_future().get() };
+    const auto actualResponse{ promise.get_future().get() };
 
-    EXPECT_EQ( actualResponse.code   , testData.response.code );
-    EXPECT_EQ( actualResponse.content, testData.response.content );
+    ASSERT_EQ( actualResponse.first         , lb::url::ResponseCode::eSuccess );
+    EXPECT_EQ( actualResponse.second.code   , testData.response.code );
+    EXPECT_EQ( actualResponse.second.content, testData.response.content );
   }
 }

@@ -24,7 +24,8 @@
 httpd::Server::Response mockServerResponse( std::string url,
                                             httpd::Server::Method method,
                                             httpd::Server::Version version,
-                                            std::string requestPayload );
+                                            std::string requestPayload,
+                                            const httpd::Server::PostKeyValues& );
 
 
 #endif // LIB_LB_URL_GTEST_MOCKSERVERRESPONSE_H

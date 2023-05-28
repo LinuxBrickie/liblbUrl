@@ -22,6 +22,7 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 
 
 namespace httpd
@@ -54,6 +55,8 @@ public:
     e2_0,
   };
 
+  using PostKeyValues = std::unordered_map< std::string, std::string >;
+
   struct Response
   {
     unsigned int code;
@@ -63,22 +66,39 @@ public:
   using RequestHandler = std::function< Response( std::string, // url
                                                   Method,
                                                   Version,
-                                                  std::string ) >; // request payload
+                                                  std::string,
+                                                  const PostKeyValues& ) >; // request payload
 
   Server( int port, RequestHandler );
   ~Server();
 
 private:
+  static MHD_Result keyValueIterator( void* userData
+                                    , enum MHD_ValueKind kind
+                                    , const char* key
+                                    , const char* value );
+
+  static MHD_Result postDataIterator( void* userData
+                                    , MHD_ValueKind kind
+                                    , const char* key
+                                    , const char* filename
+                                    , const char* content_type
+                                    , const char* transfer_encoding
+                                    , const char* data
+                                    , uint64_t off
+                                    , size_t size );
+
   static MHD_Result accessHandlerCallback( void* cls
-                                         , struct MHD_Connection* connection
+                                         , MHD_Connection*
                                          , const char* url
                                          , const char* method
                                          , const char* version
                                          , const char* upload_data
                                          , size_t* upload_data_size
-                                         , void** con_cls );
+                                         , void** connectionContext );
 
-  Response invokeRequestHandler( std::string
+  Response invokeRequestHandler( MHD_Connection*
+                               , std::string
                                , Method
                                , Version
                                , std::string );
@@ -86,6 +106,8 @@ private:
   MHD_Daemon*const mhd;
 
   RequestHandler requestHandler;
+
+  PostKeyValues postKeyValues;
 };
 
 

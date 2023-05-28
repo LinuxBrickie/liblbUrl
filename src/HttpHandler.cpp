@@ -75,17 +75,22 @@ HttpHandler::~HttpHandler()
 
 void HttpHandler::respond( ResponseCode rc, std::string receivedData )
 {
-  http::Response response;
-
-  response.content = std::move( receivedData );
 
   long httpResponseCode;
   const CURLcode cc{ curl_easy_getinfo( easyHandle, CURLINFO_RESPONSE_CODE, &httpResponseCode ) };
   switch( cc )
   {
   case CURLE_OK:
-    response.code = httpResponseCode;
-    responseCallback( rc, std::move( response ) );
+    if ( httpResponseCode == 0 ) // server did not send a valid code
+    {
+      responseCallback( ResponseCode::eFailure, {} );
+    }
+    else
+    {
+      responseCallback( rc
+                      , { (unsigned int)httpResponseCode
+                        , std::move( receivedData ) } );
+    }
     break;
   default:
     responseCallback( ResponseCode::eFailure, {} );

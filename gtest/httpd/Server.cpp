@@ -77,7 +77,7 @@ Server::Version parseVersion( const char* versionStr )
 
 
 Server::Server( int port , RequestHandler rh )
-  : mhd{ MHD_start_daemon( MHD_USE_INTERNAL_POLLING_THREAD
+  : mhd{ MHD_start_daemon( MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_ERROR_LOG
                          , port
                          , nullptr // accept policy callback not required
                          , nullptr // accept policy callback user data
@@ -93,20 +93,25 @@ Server::~Server()
   MHD_stop_daemon( mhd );
 }
 
+struct ConnectionContext
+{
+  MHD_PostProcessor* pp{ nullptr };
+};
+
 // static
 MHD_Result Server::accessHandlerCallback( void* userData
-                                        , struct MHD_Connection* connection
+                                        , MHD_Connection* connection
                                         , const char* url
-                                        , const char* method
+                                        , const char* methodStr
                                         , const char* version
                                         , const char* uploadData
                                         , size_t* uploadDataSize
-                                        , void** con_cls )
+                                        , void** connectionContext )
 {
   auto server = (Server*)userData;
 
 //  std::cout << "URL:              " << url << '\n';
-//  std::cout << "Method:           " << method << '\n';
+//  std::cout << "Method:           " << methodStr << '\n';
 //  std::cout << "Version:          " << version << '\n';
 //  std::cout << "Upload data size: " << *uploadDataSize << '\n';
 //  std::cout << "Upload data:      ";
@@ -120,10 +125,63 @@ MHD_Result Server::accessHandlerCallback( void* userData
 //  }
 //  std::cout << std::flush;
 
+  const auto method{ parseMethod( methodStr ) };
+  if ( method == Method::eInvalid )
+  {
+    return MHD_NO;
+  }
+
+  if ( !*connectionContext )
+  {
+    // First invocation for this connection so set things up as required.
+    ConnectionContext*const cc{ new ConnectionContext };
+    *connectionContext = cc;
+
+    if ( method == Method::ePost )
+    {
+      cc->pp = MHD_create_post_processor( connection
+                                        , 1024 * 32
+                                        , &postDataIterator
+                                        , userData );
+      if ( !cc->pp )
+      {
+        std::cerr << "Failed to create POST processor!" << std::endl;
+      }
+    }
+
+    // Return now and we get called again. No, I don't know either.
+    return MHD_YES;
+  }
+
+  ConnectionContext*const cc{ (ConnectionContext*)(*connectionContext) };
+
+  // Note that passing MHD_POSTDATA_KIND to MHD_get_connection_values does
+  // nothing, even for small POST data, contrary to the documentation. It
+  // appears that you must use the post processor in all cases. This would
+  // appear to be backed up by a quick inspection of the libmicrohttpd source.
+  //
+  // Note that if uploadDataSize is non-zero then we are processing POST data
+  // and must not queue a response.
+  if ( ( method == Method::ePost ) && ( *uploadDataSize != 0 ) )
+  {
+    const auto result
+    {
+      MHD_post_process( cc->pp, uploadData, *uploadDataSize )
+    };
+    *uploadDataSize = 0;
+    return result;
+  }
+
+  // Ought to be safe to destroy this now. Sample code does this in a request
+  // completed callback but I don't see why we can't do it now.
+  MHD_destroy_post_processor( cc->pp );
+  cc->pp = nullptr;
+
   const auto response
   {
-    server->invokeRequestHandler( std::move( url )
-                                , parseMethod( method )
+    server->invokeRequestHandler( connection
+                                , std::move( url )
+                                , method
                                 , parseVersion( version )
                                 , std::move( std::string{ uploadData
                                                         , *uploadDataSize } ) )
@@ -143,15 +201,59 @@ MHD_Result Server::accessHandlerCallback( void* userData
 
   MHD_destroy_response( mhdResponse );
 
+  delete cc;
+
   return result;
 }
 
-Server::Response Server::invokeRequestHandler( std::string url
+
+// static
+MHD_Result Server::keyValueIterator( void* userData
+                                   , enum MHD_ValueKind kind
+                                   , const char *key
+                                   , const char *value )
+{
+  //std::cout << "key: " << key << ", value: " << value << std::endl;
+  return MHD_YES;
+}
+
+// static
+MHD_Result Server::postDataIterator( void* userData
+                                   , MHD_ValueKind kind
+                                   , const char* key
+                                   , const char* filename
+                                   , const char* contentType
+                                   , const char* transferEncoding
+                                   , const char* data
+                                   , uint64_t off
+                                   , size_t size )
+{
+  //std::cout << "PP ITERATOR  " << key << ": " << data << std::endl;
+
+  auto server = (Server*)userData;
+
+  server->postKeyValues[ key ] = data;
+
+  return MHD_YES;
+}
+
+Server::Response Server::invokeRequestHandler( MHD_Connection* connection
+                                             , std::string url
                                              , Method method
                                              , Version version
                                              , std::string payload )
 {
-  return requestHandler( std::move( url ), method, version, std::move( payload ) );
+//  std::cout << "HEADERS:" << std::endl;
+//  std::cout << MHD_get_connection_values( connection, MHD_HEADER_KIND, &keyValueIterator, this ) << std::endl;
+
+  auto response
+  {
+    requestHandler( std::move( url ), method, version, std::move( payload ), std::move( postKeyValues ) )
+  };
+
+  postKeyValues.clear();
+
+  return response;
 }
 
 

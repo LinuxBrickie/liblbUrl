@@ -17,19 +17,45 @@
 
 #include "MockServerResponse.h"
 
+#include <stdexcept>
+
 #include "TestRequesterHttpGet.h"
 #include "TestRequesterHttpPost.h"
 
+httpd::Server::Response createPostResponse( const std::string& url
+                                          , const httpd::Server::PostKeyValues keyValues )
+{
+  httpd::Server::Response response{ 200 };
+
+  try
+  {
+    if ( url == POSTFormData )
+    {
+       response.content = keyValues.at( "handle" ) + ", your real name is " + keyValues.at( "name" ) + '!';
+    }
+    else
+    {
+      response.code = 400; // Bad request
+    }
+  }
+  catch( std::out_of_range e )
+  {
+    response.code = 400; // Bad request
+  }
+
+  return response;
+}
 
 httpd::Server::Response mockServerResponse( std::string url,
                                             httpd::Server::Method method,
                                             httpd::Server::Version version,
-                                            std::string requestPayload )
+                                            std::string requestPayload,
+                                            const httpd::Server::PostKeyValues& postKeyValues )
 {
   // Initialise to something clearly wrong and use this if we don't match the URL.
   httpd::Server::Response response
   {
-    0U,
+    500U, // Must be 3-digit code to be valid
     "Invalid test URL"
   };
 
@@ -54,7 +80,15 @@ httpd::Server::Response mockServerResponse( std::string url,
     const auto I{ POSTTestData.find( url ) };
     if ( I != POSTTestData.end() )
     {
-      response = I->second.response;
+      const TestData& testData{ I->second };
+      if ( testData.sholdServerUseResponseVerbatim )
+      {
+        response = testData.response;
+      }
+      else
+      {
+        response = createPostResponse( url, postKeyValues );
+      }
     }
     break;
   }

@@ -27,13 +27,9 @@
 #include <lb/url/http/Request.h>
 
 
-//! Keyed by URL path
-//struct TestData
-//{
-//  lb::url::http::Request request;
-////  std::string postData;
-//  httpd::Server::Response mockResponse;
-//};
+#include <lb/url/ResponseCode.h>
+
+
 
 const std::string baseUrl{ "http://" + HOST_COLON_PORT };
 
@@ -42,13 +38,16 @@ const std::string POST404Url{ "/test/url/http/post/404" };
 const std::string POSTMultilineUrl{ "/test/url/http/post/multiline" };
 const std::string POSTUnterminatedUrl{ "/test/url/http/post/unterminated" };
 const std::string POSTContainsNullUrl{ "/test/url/http/post/containsnull" };
+const std::string POSTFormData{ "/test/url/http/post/form" };
 
 struct TestData
 {
   lb::url::http::Request request;
   httpd::Server::Response response;
+  bool sholdServerUseResponseVerbatim = true;
 };
 
+//! Keyed by URL path
 const std::unordered_map<std::string, TestData> POSTTestData
 {
   // First five tests do not use the POSTed data at all at server side.
@@ -137,7 +136,28 @@ const std::unordered_map<std::string, TestData> POSTTestData
         { "POST test response contains \0 and \0", 35 }
       }
     }
+  },
+
+  {
+    POSTFormData,
+    {
+      {
+        lb::url::http::Request::Method::ePost,
+        baseUrl + POSTFormData,
+        { { "Content-Type: application/x-www-form-urlencoded" } }, // headers
+        "name=Paul&handle=LinuxBrickie"
+      },
+      {
+        200,
+        { "LinuxBrickie, your real name is Paul!" }
+      },
+      false
+    }
   }
+
+  // Still to do the following
+  // - "multipart/formdata"
+  // - large data
 };
 
 
