@@ -20,7 +20,7 @@
 #include "../src/HttpHandler.h"
 
 
-TEST(HttpHandler, Config)
+TEST(Http, Handler)
 {
   struct ResponseCallback
   {

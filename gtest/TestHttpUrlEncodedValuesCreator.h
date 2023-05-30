@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_GTEST_HTTPD_SERVERENVIRONEMENT_H
-#define LIB_LB_URL_GTEST_HTTPD_SERVERENVIRONEMENT_H
+#ifndef TESTURLENCODEDVALUESCREATOR_H
+#define TESTURLENCODEDVALUESCREATOR_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,40 +18,4 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <gtest/gtest.h>
-
-#include <memory>
-
-#include "Server.h"
-
-
-namespace httpd
-{
-
-
-class ServerEnvironment : public testing::Environment
-{
-public:
-  ServerEnvironment( int port, Server::RequestHandler handler )
-    : port{ port }, requestHandler{ handler } {}
-
-private:
-  void SetUp() override
-  {
-    server = std::make_unique<Server>( port, requestHandler );
-  }
-
-  void TearDown() override
-  {
-  }
-
-  const int port;
-  Server::RequestHandler requestHandler;
-  std::unique_ptr< Server > server;
-};
-
-
-} // End of namespace httpd
-
-
-#endif // LIB_LB_URL_GTEST_HTTPD_SERVERENVIRONEMENT_H
+#endif // TESTURLENCODEDVALUESCREATOR_H

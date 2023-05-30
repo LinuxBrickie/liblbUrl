@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_GTEST_MOCKSERVERRESPONSE_H
-#define LIB_LB_URL_GTEST_MOCKSERVERRESPONSE_H
+#ifndef TESTREQUESTERHTTPPOST_H
+#define TESTREQUESTERHTTPPOST_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,14 +18,31 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <unordered_map>
+#include <string>
+#include <vector>
+
 #include "httpd/Server.h"
 
-
-httpd::Server::Response mockServerResponse( std::string url,
-                                            httpd::Server::Method method,
-                                            httpd::Server::Version version,
-                                            std::string requestPayload,
-                                            const httpd::Server::PostKeyValues& );
+#include <lb/url/http/Request.h>
 
 
-#endif // LIB_LB_URL_GTEST_MOCKSERVERRESPONSE_H
+struct TestData
+{
+  lb::url::http::Request request;
+  httpd::Server::Response response;
+  bool shouldServerUseResponseVerbatim = true;
+};
+
+//! Keyed by URL path
+extern const std::unordered_map<std::string, TestData> POSTTestData;
+
+// Some URLs that need sharing with MockServerResponse
+extern const std::string POSTFormDataNoEncoding;
+extern const std::string POSTFormDataFieldEncoding;
+extern const std::string POSTFormDataValueEncoding;
+extern const std::string POSTFormDataFieldAndValueEncoding;
+extern const std::string POSTFormDataEmptyValue;
+
+
+#endif // TESTREQUESTERHTTPPOST_H

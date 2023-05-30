@@ -10,7 +10,7 @@ GTESTBUILDDIR := .
 GTESTTARGET := requesterTests
 
 # List of all .cpp source files.
-CPP = $(wildcard $(SRCDIR)/*.cpp)
+CPP = $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/http/*.cpp)
 GTESTCPP = $(wildcard $(GTESTDIR)/*.cpp) $(wildcard $(GTESTDIR)/httpd/*.cpp)
 
 # All .o files go to build dir.

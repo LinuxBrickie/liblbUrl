@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "TestRequesterHttpGet.h"
+#include "TestHttpRequesterGet.h"
 
 #include <gtest/gtest.h>
 
@@ -26,7 +26,61 @@
 #include "ConnectionDetails.h"
 
 
-TEST(Requester, HttpGet)
+const std::unordered_map<std::string, httpd::Server::Response> GETExpectedMockResponses
+{
+  {
+    "/test/url/http/get200",
+    {
+      200,
+      "GET test response SUCCESS"
+    }
+  },
+  {
+    "/test/url/http/get401",
+    {
+      404,
+      "GET test response UNAUTHORISED"
+    }
+  },
+  {
+    "/test/url/http/get404",
+    {
+      404,
+      "GET test response NOT FOUND"
+    }
+  },
+  {
+    "/test/url/http/get/multline",
+    {
+      200,
+      "GET test response multi-line\n"
+      "Line 1\n"
+      "Line 2"
+    }
+  },
+  // Note that the following test is a bit misleading. Requester returns the
+  // data in a std::string so it is impossible to know if it is null-terminated
+  // or not. That said libcurl does not appear to explicitly give us a null
+  // terminator for any of the previous tests so in reality nothing is
+  // null-terminated at point of receipt.
+  {
+    "/test/url/http/get/unterminated",
+    {
+      200,
+      { "GET test response unterminated", 30 }
+    }
+  },
+  {
+    "/test/url/http/get/containsnull",
+    {
+      200,
+      { "GET test response contains \0 and \0", 34 }
+    }
+  },
+};
+
+
+TEST(Http, RequesterGet)
 {
   lb::url::Requester requester;
 

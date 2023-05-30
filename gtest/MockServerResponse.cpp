@@ -19,8 +19,8 @@
 
 #include <stdexcept>
 
-#include "TestRequesterHttpGet.h"
-#include "TestRequesterHttpPost.h"
+#include "TestHttpRequesterGet.h"
+#include "TestHttpRequesterPost.h"
 
 httpd::Server::Response createPostResponse( const std::string& url
                                           , const httpd::Server::PostKeyValues keyValues )
@@ -29,9 +29,26 @@ httpd::Server::Response createPostResponse( const std::string& url
 
   try
   {
-    if ( url == POSTFormData )
+    if ( url == POSTFormDataNoEncoding )
     {
        response.content = keyValues.at( "handle" ) + ", your real name is " + keyValues.at( "name" ) + '!';
+    }
+    else if ( url == POSTFormDataFieldEncoding )
+    {
+       response.content = keyValues.at( "handle" ) + ", your encoded field has value " + keyValues.at( "+-=#';[]" );
+    }
+    else if ( url == POSTFormDataValueEncoding )
+    {
+       response.content = keyValues.at( "handle" ) + ", your encoded value is " + keyValues.at( "encoded" );
+    }
+    else if ( url == POSTFormDataFieldAndValueEncoding )
+    {
+       response.content = keyValues.at( "name" ) + ", your encoded field has encoded value " + keyValues.at( "£^&,.+_" );
+    }
+    else if ( url == POSTFormDataEmptyValue )
+    {
+       response.content = "Field values are \"" + keyValues.at( "encoded" )
+                        + "\" and \"" + keyValues.at( "unencoded" ) + "\"";
     }
     else
     {
@@ -81,7 +98,7 @@ httpd::Server::Response mockServerResponse( std::string url,
     if ( I != POSTTestData.end() )
     {
       const TestData& testData{ I->second };
-      if ( testData.sholdServerUseResponseVerbatim )
+      if ( testData.shouldServerUseResponseVerbatim )
       {
         response = testData.response;
       }

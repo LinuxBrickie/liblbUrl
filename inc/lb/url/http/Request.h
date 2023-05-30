@@ -62,7 +62,26 @@ struct Request
   using Headers = std::vector<std::string>;
   Headers headers;
 
-  std::string postData;
+  /** \brief application/x-www-form-urlencoded POST data.
+
+     Data of the form key1=value1@key2=value2. Values can be blank. Mote that
+     the = and & delimiters are not encoded.
+
+     The data is sent as-is and is assumed to be correctly encoded.
+
+     There is a helper class for creating the string, namely
+     UrlEncodedValuesCreator.
+
+     Sample encoded data would be
+
+     fruit=apple&vegetable=pot%26to&total%25=99.9
+
+     which respresent the {field,value} pairs:
+     - {fruit,apple}
+     - {vegetable,pot&to}
+     - {total%,99.9}
+   */
+  std::string postUrlEncodedValues;
 
   mime::Mime mimePost;
 };

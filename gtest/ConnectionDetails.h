@@ -1,3 +1,6 @@
+#ifndef LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
+#define LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
+
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
 
@@ -14,9 +17,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-#ifndef LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
-#define LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
 
 #include <string>
 

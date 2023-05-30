@@ -41,9 +41,9 @@ HttpHandler::HttpHandler( http::Request r, http::Response::Callback c )
     curl_easy_setopt( easyHandle, CURLOPT_NOBODY, 1L );
     break;
   case http::Request::Method::ePost:
-    if ( !request.postData.empty() )
+    if ( !request.postUrlEncodedValues.empty() )
     {
-      curl_easy_setopt( easyHandle, CURLOPT_POSTFIELDS, request.postData.c_str() );
+      curl_easy_setopt( easyHandle, CURLOPT_POSTFIELDS, request.postUrlEncodedValues.c_str() );
     }
     else // assume MIME for now
     {
