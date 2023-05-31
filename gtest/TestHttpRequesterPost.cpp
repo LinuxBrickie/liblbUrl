@@ -49,6 +49,7 @@ const std::string POSTFormDataFieldEncoding{ "/test/url/http/post/form/field-enc
 const std::string POSTFormDataValueEncoding{ "/test/url/http/post/form/value-encoding" };
 const std::string POSTFormDataFieldAndValueEncoding{ "/test/url/http/post/form/field-and-value-encoding" };
 const std::string POSTFormDataEmptyValue{ "/test/url/http/post/form/empty-field" };
+const std::string POSTFormDataLarge{ "/test/url/http/post/form/large" };
 
 
 std::string POSTFormDataUrlNoEncodingDataString()
@@ -90,6 +91,19 @@ std::string POSTFormDataEmptyValueDataString()
   creator.add( { "unencoded" }, { "", false } );
   return creator.str();
 }
+
+const int POSTFormDataLargeNumFields{ 1000000 };
+std::string POSTFormDataLargeDataString()
+{
+  lb::url::http::UrlEncodedValuesCreator creator;
+  for ( int i = 0; i < POSTFormDataLargeNumFields; ++i )
+  {
+    const auto s{ std::to_string( i ) };
+    creator.add( { "field#" + s }, { "value#" + s } );
+  }
+  return creator.str();
+}
+
 
 const std::unordered_map<std::string, TestData> POSTTestData
 {
@@ -263,6 +277,23 @@ const std::unordered_map<std::string, TestData> POSTTestData
       {
         200,
         { "Field values are \"\" and \"\"" }
+      },
+      false
+    }
+  },
+
+  {
+    POSTFormDataLarge,
+    {
+      {
+        lb::url::http::Request::Method::ePost,
+        baseUrl + POSTFormDataLarge,
+        {}, // headers
+        POSTFormDataLargeDataString()
+      },
+      {
+        200,
+        { "Processed " + std::to_string( POSTFormDataLargeNumFields ) + " fields with values" }
       },
       false
     }

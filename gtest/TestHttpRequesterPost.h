@@ -43,6 +43,7 @@ extern const std::string POSTFormDataFieldEncoding;
 extern const std::string POSTFormDataValueEncoding;
 extern const std::string POSTFormDataFieldAndValueEncoding;
 extern const std::string POSTFormDataEmptyValue;
+extern const std::string POSTFormDataLarge;
 
 
 #endif // TESTREQUESTERHTTPPOST_H

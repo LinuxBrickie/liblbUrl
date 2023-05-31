@@ -50,6 +50,12 @@ httpd::Server::Response createPostResponse( const std::string& url
        response.content = "Field values are \"" + keyValues.at( "encoded" )
                         + "\" and \"" + keyValues.at( "unencoded" ) + "\"";
     }
+    else if ( url == POSTFormDataLarge )
+    {
+      response.content = "Processed "
+                       + std::to_string( keyValues.size() )
+                       + " fields with values";
+    }
     else
     {
       response.code = 400; // Bad request
