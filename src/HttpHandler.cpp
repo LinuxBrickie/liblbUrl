@@ -29,6 +29,7 @@ namespace url
 HttpHandler::HttpHandler( http::Request r, http::Response::Callback c )
   : request{ std::move( r ) }
   , responseCallback{ std::move( c ) }
+  , mimeHelper{ std::move( request.mimePost ) }
 {
   curl_easy_setopt( easyHandle, CURLOPT_URL, request.url.c_str() );
 

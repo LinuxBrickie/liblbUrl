@@ -56,7 +56,7 @@ struct MimePart
    */
   std::string type;
 
-  /** \brief EXplicitly set the encoding if required.
+  /** \brief Explicitly set the encoding if required.
 
       Supported values are:
       - "binary"

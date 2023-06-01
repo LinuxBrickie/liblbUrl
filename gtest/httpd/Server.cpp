@@ -117,7 +117,7 @@ MHD_Result Server::accessHandlerCallback( void* userData
 //  std::cout << "Upload data:      ";
 //  if ( uploadData )
 //  {
-//    std::cout << uploadData << '\n';
+//    std::cout << std::string{ uploadData, *uploadDataSize } << '\n';
 //  }
 //  else
 //  {
@@ -213,7 +213,7 @@ MHD_Result Server::keyValueIterator( void* userData
                                    , const char *key
                                    , const char *value )
 {
-  //std::cout << "key: " << key << ", value: " << value << std::endl;
+  std::cout << "key: " << key << ", value: " << value << std::endl;
   return MHD_YES;
 }
 
@@ -228,11 +228,38 @@ MHD_Result Server::postDataIterator( void* userData
                                    , uint64_t off
                                    , size_t size )
 {
-  //std::cout << "PP ITERATOR  " << key << ": " << data << std::endl;
+//  std::cout << "PP ITERATOR \n";
+//  std::cout << " key: " << key << '\n';
+//  if ( filename )
+//  {
+//    std::cout << " filename: " << filename << '\n';
+//  }
+//  if ( contentType )
+//  {
+//    std::cout << " content type: " << contentType << '\n';
+//  }
+//  if ( transferEncoding )
+//  {
+//    std::cout << " transfer encoding: " << transferEncoding << '\n';
+//  }
+//  std::cout << " data: " << std::string{ data, size } << '\n';
+//  std::cout << " offset: " << off << '\n';
+//  std::cout << " size: " << size << '\n';
+//  std::cout << std::flush;
 
   auto server = (Server*)userData;
 
-  server->postKeyValues[ key ] = data;
+  const auto I{ server->postKeyValues.find( key ) };
+  if ( I != server->postKeyValues.end() )
+  {
+    I->second.append( data, size );
+  }
+  else
+  {
+    server->postKeyValues.emplace( std::piecewise_construct
+                                 , std::forward_as_tuple( key )
+                                 , std::forward_as_tuple( data, size ) );
+  }
 
   return MHD_YES;
 }

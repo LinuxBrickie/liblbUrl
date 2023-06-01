@@ -43,13 +43,17 @@ const std::string POST200Url{ "/test/url/http/post/200" };
 const std::string POST404Url{ "/test/url/http/post/404" };
 const std::string POSTMultilineUrl{ "/test/url/http/post/multiline" };
 const std::string POSTUnterminatedUrl{ "/test/url/http/post/unterminated" };
-const std::string POSTContainsNullUrl{ "/test/url/http/post/containsnull" };
+const std::string POSTContainsNullUrl{ "/test/url/http/post/contains-null" };
 const std::string POSTFormDataNoEncoding{ "/test/url/http/post/form/no-encoding" };
 const std::string POSTFormDataFieldEncoding{ "/test/url/http/post/form/field-encoding" };
 const std::string POSTFormDataValueEncoding{ "/test/url/http/post/form/value-encoding" };
 const std::string POSTFormDataFieldAndValueEncoding{ "/test/url/http/post/form/field-and-value-encoding" };
 const std::string POSTFormDataEmptyValue{ "/test/url/http/post/form/empty-field" };
 const std::string POSTFormDataLarge{ "/test/url/http/post/form/large" };
+const std::string POSTMimeFormDataSimple{ "/test/url/http/post/mime/form/simple" };
+const std::string POSTMimeFormDataContainsNull{ "/test/url/http/post/mime/form/contains-null" };
+const std::string POSTMimeFormDataLarge{ "/test/url/http/post/mime/form/large" };
+const std::string POSTMimeFormDataMulti{ "/test/url/http/post/mime/form/multi" };
 
 
 std::string POSTFormDataUrlNoEncodingDataString()
@@ -104,9 +108,23 @@ std::string POSTFormDataLargeDataString()
   return creator.str();
 }
 
+const int POSTMimeFormDataSimpleNumBytes{ 100 };
+const int POSTMimeFormDataLargeNumBytes{ 1000000000 };
+const int POSTMimeFormDataMulti1NumBytes{ 1000 };
+const int POSTMimeFormDataMulti2NumBytes{ 200 };
+const int POSTMimeFormDataMulti3NumBytes{ 333 };
+
 
 const std::unordered_map<std::string, TestData> POSTTestData
 {
+  /*
+
+  //////////////////////////////////////////////
+  // Tests for application/x-www-form-urlencoded
+  //
+  // For the following tests note that libcurl automatically sets the
+  // Content-Type header to application/x-www-form-urlencoded.
+
   // First five tests do not use the POSTed data at all at server side.
   {
     POST200Url,
@@ -195,8 +213,6 @@ const std::unordered_map<std::string, TestData> POSTTestData
     }
   },
 
-  // For the following four tests note that libcurl automatically sets the
-  // Content-Type header to application/x-www-form-urlencoded.
   {
     POSTFormDataNoEncoding,
     {
@@ -298,10 +314,137 @@ const std::unordered_map<std::string, TestData> POSTTestData
       false
     }
   },
+*/
 
-  // Still to do the following
-  // - "multipart/formdata"
-  // - large data
+
+  /////////////////////////////////
+  // Tests for multipart/form-data
+  //
+  // For the following tests note that libcurl automatically sets the
+  // Content-Type header to multipart/form-data (and specifies the boundary).
+
+  {
+    POSTMimeFormDataSimple,
+    {
+      {
+        lb::url::http::Request::Method::ePost,
+        baseUrl + POSTMimeFormDataSimple,
+        {}, // headers
+        {}, // x-www-form-urlencoded data, not relevant here
+        {
+          {
+            {
+              {}, // type, not required
+              { "binary" }, // encoding
+              { "simple" }, // name of MIME part
+              { std::string( POSTMimeFormDataSimpleNumBytes, '0' ) }  // Note curly braces here would initialise a 2-character string.
+            }
+          }
+        }
+      },
+      {
+        200,
+        { "Processed " + std::to_string( POSTMimeFormDataSimpleNumBytes ) + " bytes of data from MIME part" }
+      },
+      false
+    }
+  },
+
+  {
+    POSTMimeFormDataContainsNull,
+    {
+      {
+        lb::url::http::Request::Method::ePost,
+        baseUrl + POSTMimeFormDataContainsNull,
+        {}, // headers
+        {}, // x-www-form-urlencoded data, not relevant here
+        {
+          {
+            {
+              {}, // type, not required
+              { "binary" }, // encoding
+              { "contains-null" }, // name of MIME part
+              { "aaa\0bbb\0ccc\0dddd", 16 }
+            }
+          }
+        }
+      },
+      {
+        200,
+        { "Processed " + std::to_string( 16 ) + " bytes of data from MIME part" }
+      },
+      false
+    }
+  },
+
+  {
+    POSTMimeFormDataLarge,
+    {
+      {
+        lb::url::http::Request::Method::ePost,
+        baseUrl + POSTMimeFormDataLarge,
+        {}, // headers
+        {}, // x-www-form-urlencoded data, not relevant here
+        {
+          {
+            {
+              {}, // type, not required
+              { "binary" }, // encoding
+              { "large" }, // name of MIME part
+              { std::string( POSTMimeFormDataLargeNumBytes, '0' ) }  // Note curly braces here would initialise a 2-character string.
+            }
+          }
+        }
+      },
+      {
+        200,
+        { "Processed " + std::to_string( POSTMimeFormDataLargeNumBytes ) + " bytes of data from MIME part" }
+      },
+      false
+    }
+  },
+
+  {
+    POSTMimeFormDataMulti,
+    {
+      {
+        lb::url::http::Request::Method::ePost,
+        baseUrl + POSTMimeFormDataMulti,
+        {}, // headers
+        {}, // x-www-form-urlencoded data, not relevant here
+        {
+          {
+            {
+              {}, // type, not required
+              { "binary" }, // encoding
+              { "multi1" }, // name of MIME part
+              { std::string( POSTMimeFormDataMulti1NumBytes, '1' ) }  // Note curly braces here would initialise a 2-character string.
+            },
+            {
+              {}, // type, not required
+              { "binary" }, // encoding
+              { "multi2" }, // name of MIME part
+              { std::string( POSTMimeFormDataMulti2NumBytes, '2' ) }  // Note curly braces here would initialise a 2-character string.
+            },
+            {
+              {}, // type, not required
+              { "binary" }, // encoding
+              { "multi3" }, // name of MIME part
+              { std::string( POSTMimeFormDataMulti3NumBytes, '3' ) }  // Note curly braces here would initialise a 2-character string.
+            }
+          }
+        }
+      },
+      {
+        200,
+        { "Processed 3 parts, with "
+        + std::to_string( POSTMimeFormDataMulti1NumBytes ) + ", "
+        + std::to_string( POSTMimeFormDataMulti2NumBytes ) + ", and "
+        + std::to_string( POSTMimeFormDataMulti3NumBytes ) + " bytes of data from MIME" }
+      },
+      false
+    }
+  },
 };
 
 TEST(Http, RequesterPost)

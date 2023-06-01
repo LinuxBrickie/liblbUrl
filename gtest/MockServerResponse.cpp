@@ -56,6 +56,25 @@ httpd::Server::Response createPostResponse( const std::string& url
                        + std::to_string( keyValues.size() )
                        + " fields with values";
     }
+    else if ( url == POSTMimeFormDataSimple )
+    {
+      response.content = "Processed " + std::to_string( keyValues.at( "simple" ).size() ) + " bytes of data from MIME part";
+    }
+    else if ( url == POSTMimeFormDataContainsNull )
+    {
+      response.content = "Processed " + std::to_string( keyValues.at( "contains-null" ).size() ) + " bytes of data from MIME part";
+    }
+    else if ( url == POSTMimeFormDataLarge )
+    {
+      response.content = "Processed " + std::to_string( keyValues.at( "large" ).size() ) + " bytes of data from MIME part";
+    }
+    else if ( url == POSTMimeFormDataMulti )
+    {
+      response.content = "Processed " + std::to_string( keyValues.size() ) + " parts, with "
+                       + std::to_string( keyValues.at( "multi1" ).size() ) + ", "
+                       + std::to_string( keyValues.at( "multi2" ).size() ) + ", and "
+                       + std::to_string( keyValues.at( "multi3" ).size() ) + " bytes of data from MIME";
+    }
     else
     {
       response.code = 400; // Bad request
