@@ -7,10 +7,11 @@ lb is short for LinuxBrickie, my online handle.
 ## Dependencies
 
 The main library dependencies are
-- libcurl
+- libcurl (licensed under the curl license)
 
 In addition the gtest binary dependencies are
-- libmicrohttpd
+- googletest( licensed under BSD 3-Clause)
+- libmicrohttpd (licensed under LGPL-2.1-or-later)
 
 ## Licensing
 

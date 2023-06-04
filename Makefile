@@ -14,8 +14,6 @@ CPP = $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/http/*.cpp)
 GTESTCPP = $(wildcard $(GTESTDIR)/*.cpp) $(wildcard $(GTESTDIR)/httpd/*.cpp)
 
 # All .o files go to build dir.
-#OBJ = $(CPP:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
-#GTESTOBJ = $(GTESTCPP:$(GTESTDIR)/%.cpp=$(GTESTBUILDDIR)/%.o)
 OBJ = $(CPP:%.cpp=$(BUILDDIR)/%.o)
 GTESTOBJ = $(GTESTCPP:%.cpp=$(GTESTBUILDDIR)/%.o)
 
