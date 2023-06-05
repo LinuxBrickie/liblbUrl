@@ -18,14 +18,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "httpd/Server.h"
+#include <lb/httpd/Server.h>
 
 
-httpd::Server::Response mockServerResponse( std::string url,
-                                            httpd::Server::Method method,
-                                            httpd::Server::Version version,
-                                            std::string requestPayload,
-                                            const httpd::Server::PostKeyValues& );
+lb::httpd::Server::Response mockServerResponse( std::string url,
+                                                lb::httpd::Server::Method method,
+                                                lb::httpd::Server::Version version,
+                                                std::string requestPayload,
+                                                const lb::httpd::Server::PostKeyValues& );
 
 
 #endif // LIB_LB_URL_GTEST_MOCKSERVERRESPONSE_H

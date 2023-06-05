@@ -26,7 +26,7 @@
 #include "ConnectionDetails.h"
 
 
-const std::unordered_map<std::string, httpd::Server::Response> GETExpectedMockResponses
+const std::unordered_map<std::string, lb::httpd::Server::Response> GETExpectedMockResponses
 {
   {
     "/test/url/http/get200",

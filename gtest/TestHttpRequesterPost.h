@@ -22,15 +22,14 @@
 #include <string>
 #include <vector>
 
-#include "httpd/Server.h"
-
+#include <lb/httpd/Server.h>
 #include <lb/url/http/Request.h>
 
 
 struct TestData
 {
   lb::url::http::Request request;
-  httpd::Server::Response response;
+  lb::httpd::Server::Response response;
   bool shouldServerUseResponseVerbatim = true;
 };
 

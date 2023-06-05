@@ -22,7 +22,7 @@
 
 #include <memory>
 
-#include "Server.h"
+#include <lb/httpd/Server.h>
 
 
 namespace httpd
@@ -32,13 +32,13 @@ namespace httpd
 class ServerEnvironment : public testing::Environment
 {
 public:
-  ServerEnvironment( int port, Server::RequestHandler handler )
+  ServerEnvironment( int port, lb::httpd::Server::RequestHandler handler )
     : port{ port }, requestHandler{ handler } {}
 
 private:
   void SetUp() override
   {
-    server = std::make_unique<Server>( port, requestHandler );
+    server = std::make_unique<lb::httpd::Server>( port, requestHandler );
   }
 
   void TearDown() override
@@ -46,8 +46,8 @@ private:
   }
 
   const int port;
-  Server::RequestHandler requestHandler;
-  std::unique_ptr< Server > server;
+  lb::httpd::Server::RequestHandler requestHandler;
+  std::unique_ptr< lb::httpd::Server > server;
 };
 
 

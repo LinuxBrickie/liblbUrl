@@ -9,6 +9,10 @@ GTESTDIR := gtest
 GTESTBUILDDIR := .
 GTESTTARGET := requesterTests
 
+LBHTTPDPATH := ../liblbHttpd
+LBHTTPDINC := -I $(LBHTTPDPATH)/inc
+LBHTTPDLD := -L$(LBHTTPDPATH) -llbHttpd
+
 # List of all .cpp source files.
 CPP = $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/http/*.cpp)
 GTESTCPP = $(wildcard $(GTESTDIR)/*.cpp) $(wildcard $(GTESTDIR)/httpd/*.cpp)
@@ -30,7 +34,7 @@ $(TARGET): $(OBJ)
 	$(COMPILE) -shared -lcurl -o $(TARGET) $(OBJ)
 
 $(GTESTTARGET): $(GTESTOBJ) $(TARGET)
-	$(COMPILE) -Wl,-rpath,$(BUILDDIR) -L$(BUILDDIR) -llbUrl -lgtest -lmicrohttpd -o $(GTESTTARGET)  $(GTESTOBJ)
+	$(COMPILE) -Wl,-rpath,$(BUILDDIR) -L$(BUILDDIR) $(LBHTTPDLD) -llbUrl -lgtest -lmicrohttpd -o $(GTESTTARGET)  $(GTESTOBJ)
 
 # Include all .d files
 -include $(DEP)
@@ -42,7 +46,7 @@ $(BUILDDIR)/$(SRCDIR)/%.o : $(SRCDIR)/%.cpp
 
 $(GTESTBUILDDIR)/$(GTESTDIR)/%.o : $(GTESTDIR)/%.cpp
 	mkdir -p $(@D)
-	$(COMPILE) $(DEBUG) -c $(CXXFLAGS) -o $@ $<
+	$(COMPILE) $(DEBUG) -c $(CXXFLAGS) $(LBHTTPDINC) -o $@ $<
 
 clean:
 	rm -f $(DEP) $(OBJ) $(TARGET)

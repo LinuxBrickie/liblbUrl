@@ -21,11 +21,11 @@
 #include <unordered_map>
 #include <string>
 
-#include "httpd/Server.h"
+#include <lb/httpd/Server.h>
 
 
 //! Keyed by URL path
-extern const std::unordered_map<std::string, httpd::Server::Response> GETExpectedMockResponses;
+extern const std::unordered_map<std::string, lb::httpd::Server::Response> GETExpectedMockResponses;
 
 
 #endif // LIB_LB_URL_GTEST_TESTREQUESTERHTTPGET_H

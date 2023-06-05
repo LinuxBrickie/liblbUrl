@@ -22,10 +22,10 @@
 #include "TestHttpRequesterGet.h"
 #include "TestHttpRequesterPost.h"
 
-httpd::Server::Response createPostResponse( const std::string& url
-                                          , const httpd::Server::PostKeyValues keyValues )
+lb::httpd::Server::Response createPostResponse( const std::string& url
+                                              , const lb::httpd::Server::PostKeyValues keyValues )
 {
-  httpd::Server::Response response{ 200 };
+  lb::httpd::Server::Response response{ 200 };
 
   try
   {
@@ -88,14 +88,14 @@ httpd::Server::Response createPostResponse( const std::string& url
   return response;
 }
 
-httpd::Server::Response mockServerResponse( std::string url,
-                                            httpd::Server::Method method,
-                                            httpd::Server::Version version,
-                                            std::string requestPayload,
-                                            const httpd::Server::PostKeyValues& postKeyValues )
+lb::httpd::Server::Response mockServerResponse( std::string url,
+                                                lb::httpd::Server::Method method,
+                                                lb::httpd::Server::Version version,
+                                                std::string requestPayload,
+                                                const lb::httpd::Server::PostKeyValues& postKeyValues )
 {
   // Initialise to something clearly wrong and use this if we don't match the URL.
-  httpd::Server::Response response
+  lb::httpd::Server::Response response
   {
     500U, // Must be 3-digit code to be valid
     "Invalid test URL"
@@ -103,10 +103,10 @@ httpd::Server::Response mockServerResponse( std::string url,
 
   switch ( method )
   {
-  case httpd::Server::Method::eInvalid:
+  case lb::httpd::Server::Method::eInvalid:
     response.content = "Invalid HTTP method";
     break;
-  case httpd::Server::Method::eGet:
+  case lb::httpd::Server::Method::eGet:
   {
     const auto I{ GETExpectedMockResponses.find( url ) };
     if ( I != GETExpectedMockResponses.end() )
@@ -115,9 +115,9 @@ httpd::Server::Response mockServerResponse( std::string url,
     }
     break;
   }
-  case httpd::Server::Method::eHead:
+  case lb::httpd::Server::Method::eHead:
     break;
-  case httpd::Server::Method::ePost:
+  case lb::httpd::Server::Method::ePost:
   {
     const auto I{ POSTTestData.find( url ) };
     if ( I != POSTTestData.end() )
@@ -134,9 +134,9 @@ httpd::Server::Response mockServerResponse( std::string url,
     }
     break;
   }
-  case httpd::Server::Method::ePut:
+  case lb::httpd::Server::Method::ePut:
     break;
-  case httpd::Server::Method::eDelete:
+  case lb::httpd::Server::Method::eDelete:
     break;
   }
 
