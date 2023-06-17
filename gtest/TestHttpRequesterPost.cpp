@@ -117,8 +117,6 @@ const int POSTMimeFormDataMulti3NumBytes{ 333 };
 
 const std::unordered_map<std::string, TestData> POSTTestData
 {
-  /*
-
   //////////////////////////////////////////////
   // Tests for application/x-www-form-urlencoded
   //
@@ -314,8 +312,6 @@ const std::unordered_map<std::string, TestData> POSTTestData
       false
     }
   },
-*/
-
 
   /////////////////////////////////
   // Tests for multipart/form-data

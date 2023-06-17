@@ -91,8 +91,9 @@ lb::httpd::Server::Response createPostResponse( const std::string& url
 lb::httpd::Server::Response mockServerResponse( std::string url,
                                                 lb::httpd::Server::Method method,
                                                 lb::httpd::Server::Version version,
+                                                lb::httpd::Server::Headers headers,
                                                 std::string requestPayload,
-                                                const lb::httpd::Server::PostKeyValues& postKeyValues )
+                                                lb::httpd::Server::PostKeyValues postKeyValues )
 {
   // Initialise to something clearly wrong and use this if we don't match the URL.
   lb::httpd::Server::Response response

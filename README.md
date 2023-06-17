@@ -10,8 +10,9 @@ The main library dependencies are
 - libcurl (licensed under the curl license)
 
 In addition the gtest binary dependencies are
-- googletest( licensed under BSD 3-Clause)
-- libmicrohttpd (licensed under LGPL-2.1-or-later)
+- googletest (licensed under BSD 3-Clause)
+- liblbHttpd (available from my github account, licensed under AGPL-3.0-or-later)
+- - libmicrohttpd (licensed under LGPL-2.1-or-later)
 
 ## Licensing
 

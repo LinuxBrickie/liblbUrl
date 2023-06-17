@@ -22,10 +22,11 @@
 
 
 lb::httpd::Server::Response mockServerResponse( std::string url,
-                                                lb::httpd::Server::Method method,
-                                                lb::httpd::Server::Version version,
+                                                lb::httpd::Server::Method,
+                                                lb::httpd::Server::Version,
+                                                lb::httpd::Server::Headers,
                                                 std::string requestPayload,
-                                                const lb::httpd::Server::PostKeyValues& );
+                                                lb::httpd::Server::PostKeyValues );
 
 
 #endif // LIB_LB_URL_GTEST_MOCKSERVERRESPONSE_H
