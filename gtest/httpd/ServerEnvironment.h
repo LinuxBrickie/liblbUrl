@@ -24,6 +24,8 @@
 
 #include <lb/httpd/Server.h>
 
+#include "ConnectionDetails.h"
+
 
 namespace httpd
 {
@@ -32,22 +34,45 @@ namespace httpd
 class ServerEnvironment : public testing::Environment
 {
 public:
-  ServerEnvironment( int port, lb::httpd::Server::RequestHandler handler )
-    : port{ port }, requestHandler{ handler } {}
+  ServerEnvironment( ConnectionDetails cd
+                   , lb::httpd::Server::RequestHandler requestHandler
+                   , lb::httpd::ws::Handler webSocketHandler )
+    : connectionDetails{ cd }, requestHandler{ requestHandler }, webSocketHandler{ webSocketHandler } {}
 
 private:
   void SetUp() override
   {
-    server = std::make_unique<lb::httpd::Server>( port, requestHandler );
+    for ( const auto&[type, serverConfigs] : connectionDetails )
+    {
+      for ( const auto& serverConfig : serverConfigs )
+      {
+        switch ( type )
+        {
+        case httpd::ServerType::eBasic:
+          servers[ type ].emplace_back( serverConfig
+                                      , requestHandler );
+          break;
+        case httpd::ServerType::eWebSocket:
+          servers[ type ].emplace_back( serverConfig
+                                      , requestHandler
+                                      , webSocketHandler );
+          break;
+        }
+
+      }
+    }
   }
 
   void TearDown() override
   {
+    servers.clear();
   }
 
-  const int port;
-  lb::httpd::Server::RequestHandler requestHandler;
-  std::unique_ptr< lb::httpd::Server > server;
+  const ConnectionDetails connectionDetails;
+  lb::httpd::Server::RequestHandler     requestHandler;
+  lb::httpd::ws::Handler webSocketHandler;
+
+  std::map< ServerType, std::vector<lb::httpd::Server> > servers;
 };
 
 

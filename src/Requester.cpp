@@ -19,8 +19,10 @@
 
 #include "HttpHandler.h"
 #include "RequestHandler.h"
+#include "WebSocketHandler.h"
 
 #include <atomic>
+#include <chrono>
 #include <iostream>
 #include <mutex>
 #include <queue>
@@ -44,21 +46,33 @@ struct Requester::Private
   using Lock = std::scoped_lock<T>;
 
   std::thread thread; //!< running and Response callback thread.
-  std::mutex mutex;
 
   std::atomic<bool> running{ true };
 
+  Config config;
+
   CURLM* multiHandle{ nullptr };
 
+  std::mutex pendingRequestsMutex;
+
   using PendingRequests = std::queue< std::unique_ptr<RequestHandler> >;
-  PendingRequests pendingRequests; //!< Protected by \a mutex
+  PendingRequests pendingRequests; //!< Protected by \a pendingRequestsMutex
 
   using Requests = std::unordered_map< CURL*, std::unique_ptr<RequestHandler> >;
   Requests requests;
 
+  mutable std::mutex persistingRequestsMutex;
 
-  Private()
-    : multiHandle{ curl_multi_init() }
+  /** \brief Storage for persisting connections.
+
+      If a RequestHandler wants to persist it gets moved from requests to here.
+      Acces to this container is protected by \a persistingRequestsMutex.
+   */
+  Requests persistingRequests;
+
+  Private( Config c )
+    : config{ std::move( c ) }
+    , multiHandle{ curl_multi_init() }
     , thread{}
   {
     if ( !multiHandle )
@@ -73,6 +87,27 @@ struct Requester::Private
 
   ~Private()
   {
+    // Close off any remaining persistingRequests before we stop running. This
+    // may involve sending close handshakes and waiting for responses so may
+    // need the run() loop to keep going until they are done. Either way it is
+    // assumed that each persisting request will ultimately remove itself from
+    // the map at which point the run() loop can be stopped.
+    {
+      std::scoped_lock l( persistingRequestsMutex );
+      for ( auto&[h, persistingRequest]  : persistingRequests )
+      {
+        persistingRequest->closePersisting();
+      }
+    }
+
+    while( stillPersistingRequests() )
+    {
+      using namespace std::chrono_literals;
+      // May as well do this at the same granularoty as the run() loop as that
+      // is what we will be waiting for.
+      std::this_thread::sleep_for( std::chrono::milliseconds( config.pollTimeoutMilliseconds ) );
+    }
+
     running = false;
 
     thread.join();
@@ -82,16 +117,23 @@ struct Requester::Private
 
   void addRequest( http::Request request, http::Response::Callback response )
   {
-    std::scoped_lock l{ mutex };
+    std::scoped_lock l{ pendingRequestsMutex };
 
     pendingRequests.push( std::make_unique< HttpHandler >( std::move( request ), std::move( response ) ) );
+  }
+
+  void addRequest( ws::Request request, ws::Response::Callback response )
+  {
+    std::scoped_lock l{ pendingRequestsMutex };
+
+    pendingRequests.push( std::make_unique< WebSocketHandler >( std::move( request ), std::move( response ) ) );
   }
 
   bool addPendingRequests()
   {
     bool atLeastOneAdded{ false };
 
-    // Assumes mutex is locked
+    std::scoped_lock l{ pendingRequestsMutex };
     while ( !pendingRequests.empty() )
     {
       auto& pendingRequest{ pendingRequests.front() };
@@ -140,19 +182,26 @@ struct Requester::Private
     }
 
     auto& request{ I->second };
-    //request->processInfo();
-    request->respond( ResponseCode::eSuccess );
+    switch( request->respond( ResponseCode::eSuccess ) )
+    {
+    case RequestHandler::Status::eFinished:
+      curl_multi_remove_handle( multiHandle, easyHandle );
+      requests.erase( I );
+      break;
+    case RequestHandler::Status::ePersisting:
+      {
+        std::scoped_lock l( persistingRequestsMutex );
+        persistingRequests[ easyHandle ] = std::move( request );
+      }
+      requests.erase( I );
+      break;
+    }
 
-    curl_multi_remove_handle( multiHandle, easyHandle );
-
-    requests.erase( I );
     return true;
   }
 
   void run()
   {
-    static const int timeoutMilliseconds{ 500 };
-
     // We don't use this for anything yet but iot's a required argument for
     // curl_multi_perform.)
     int numHandlesRunning{ 0 };
@@ -173,7 +222,7 @@ struct Requester::Private
       //    descriptors have activity then we call curl_mutli_perform to deal
       //    with any data they may have.
       int numActiveFDs;
-      const auto pollRC{ curl_multi_poll( multiHandle, nullptr, 0, timeoutMilliseconds, &numActiveFDs ) };
+      const auto pollRC{ curl_multi_poll( multiHandle, nullptr, 0, config.pollTimeoutMilliseconds, &numActiveFDs ) };
       //std::cout << numActiveFDs << " FDs" << std::endl;
       switch ( pollRC )
       {
@@ -192,8 +241,27 @@ struct Requester::Private
       //    on the curl_multi_perform info since we are only going to call that
       //    when new requests are added).
       read();
-    }
 
+      // Now update any persisting connections. These are unaffected by the
+      // curl_multi_perform above.
+      std::vector< Requests::iterator > toClose;
+      {
+        std::scoped_lock l( persistingRequestsMutex );
+        for ( auto R = persistingRequests.begin(); R != persistingRequests.end(); ++R )
+        {
+          if ( !R->second->updatePersisting() )
+          {
+            toClose.push_back( R );
+          }
+        }
+
+        for ( const auto& R : toClose )
+        {
+          curl_multi_remove_handle( multiHandle, R->second->getHandle() );
+          persistingRequests.erase( R );
+        }
+      }
+    }
 
     // Abort any requests that are still not complete.
     for ( auto& request : requests )
@@ -220,16 +288,27 @@ struct Requester::Private
         }
       } while( m );
   }
+
+  bool stillPersistingRequests() const
+  {
+    std::scoped_lock l( persistingRequestsMutex );
+    return !persistingRequests.empty();
+  }
 };
 
-Requester::Requester()
-    : d{ new Private() }
+Requester::Requester( Config c )
+    : d{ new Private( c ) }
 {
 }
 
 Requester::~Requester() = default;
 
 void Requester::makeRequest( http::Request request, http::Response::Callback response )
+{
+  d->addRequest( std::move( request ), std::move( response ) );
+}
+
+void Requester::makeRequest( ws::Request request, ws::Response::Callback response )
 {
   d->addRequest( std::move( request ), std::move( response ) );
 }
@@ -261,7 +340,7 @@ bool Requester::wasGlobalInitSuccessful()
 }
 
 // static
-std::string Requester::getVersion()
+std::string Requester::getCurlVersion()
 {
   return curl_version();
 }

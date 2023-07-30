@@ -1,6 +1,3 @@
-#ifndef LIB_LB_URL_VERSION_H
-#define LIB_LB_URL_VERSION_H
-
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
 
@@ -18,33 +15,22 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Version macros
-#define LIB_LB_URL_VERSION "1.0.0"
-#define LIB_LB_URL_VERSION_MAJOR 1
-#define LIB_LB_URL_VERSION_MINOR 1
-#define LIB_LB_URL_VERSION_PATCH 0
-#define LIB_LB_URL_VERSION_NUM 0x010000
+#include <iostream>
+
+#include <curl/curl.h>
 
 
-namespace lb
+int main()
 {
+  curl_version_info_data*const vi{ curl_version_info( CURLVERSION_NOW ) };
 
+  std::cout << "\nlibcurl version: " << vi->version << std::endl;
 
-namespace url
-{
-
-/** \brief Contains library version information. */
-const struct Version
-{
-  const unsigned int number{ LIB_LB_URL_VERSION_NUM };
+  std::cout << "\nSupported protocols:\n\n";
+  const char*const * p{ vi->protocols };
+  while ( *p )
+  {
+    std::cout << *p << std::endl;
+    ++p;
+  }
 }
-version;
-
-
-} // End of namespace url
-
-
-} // End of namespace lb
-
-
-#endif // VLIB_LB_URL_ERSION_H

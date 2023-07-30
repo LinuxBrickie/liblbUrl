@@ -17,15 +17,17 @@
 
 #include <gtest/gtest.h>
 
-#include "ConnectionDetails.h"
 #include "httpd/ServerEnvironment.h"
 #include "MockServerResponse.h"
+#include "MockWebSocketHandler.h"
+#include "ServerList.h"
 
 
 int main( int argc, char** argv )
 {
   testing::InitGoogleTest( &argc, argv );
-  AddGlobalTestEnvironment( new httpd::ServerEnvironment{ PORT
-                                                        , mockServerResponse } );
+  AddGlobalTestEnvironment( new httpd::ServerEnvironment{ serverList
+                                                        , mockServerResponse
+                                                        , mockWSHandler } );
   return RUN_ALL_TESTS();
 }

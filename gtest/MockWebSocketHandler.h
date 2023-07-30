@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_VERSION_H
-#define LIB_LB_URL_VERSION_H
+#ifndef LIB_LB_URL_GTEST_MOCKWEBSOCKETHANDLER_H
+#define LIB_LB_URL_GTEST_MOCKWEBSOCKETHANDLER_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,33 +18,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Version macros
-#define LIB_LB_URL_VERSION "1.0.0"
-#define LIB_LB_URL_VERSION_MAJOR 1
-#define LIB_LB_URL_VERSION_MINOR 1
-#define LIB_LB_URL_VERSION_PATCH 0
-#define LIB_LB_URL_VERSION_NUM 0x010000
+#include <lb/httpd/Server.h>
+using WSH = lb::httpd::ws::Handler;
+
+bool mockIsHandled( const std::string& );
+lb::httpd::ws::Receivers mockConnectionEstablished( WSH::Connection );
+
+extern WSH mockWSHandler;
 
 
-namespace lb
-{
-
-
-namespace url
-{
-
-/** \brief Contains library version information. */
-const struct Version
-{
-  const unsigned int number{ LIB_LB_URL_VERSION_NUM };
-}
-version;
-
-
-} // End of namespace url
-
-
-} // End of namespace lb
-
-
-#endif // VLIB_LB_URL_ERSION_H
+#endif // LIB_LB_URL_GTEST_MOCKWEBSOCKETHANDLER_H

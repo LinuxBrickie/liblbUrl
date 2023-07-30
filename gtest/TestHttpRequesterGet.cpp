@@ -23,7 +23,7 @@
 
 #include <lb/url/Requester.h>
 
-#include "ConnectionDetails.h"
+#include "ServerList.h"
 
 
 const std::unordered_map<std::string, lb::httpd::Server::Response> GETExpectedMockResponses
@@ -84,20 +84,26 @@ TEST(Http, RequesterGet)
 {
   lb::url::Requester requester;
 
-  for ( const auto&[ url, expectedResponse ] : GETExpectedMockResponses )
+  for ( auto&[type, serverConfigs] : serverList )
   {
-    std::promise<lb::url::http::Response> promise;
-
-    requester.makeRequest( { lb::url::http::Request::Method::eGet
-                           , "http://" + HOST_COLON_PORT + url }
-                         , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+    for ( const auto serverConfig : serverConfigs )
     {
-      promise.set_value( std::move( r ) );
-    } );
+      for ( const auto&[ urlPath, expectedResponse ] : GETExpectedMockResponses )
+      {
+        std::promise<lb::url::http::Response> promise;
 
-    lb::url::http::Response actualResponse{ promise.get_future().get() };
+        requester.makeRequest( { lb::url::http::Request::Method::eGet
+                               , "http://" + hostColonPort( serverConfig.port ) + urlPath }
+                             , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+        {
+          promise.set_value( std::move( r ) );
+        } );
 
-    EXPECT_EQ( actualResponse.code   , expectedResponse.code );
-    EXPECT_EQ( actualResponse.content, expectedResponse.content );
+        lb::url::http::Response actualResponse{ promise.get_future().get() };
+
+        EXPECT_EQ( actualResponse.code   , expectedResponse.code );
+        EXPECT_EQ( actualResponse.content, expectedResponse.content );
+      }
+    }
   }
 }

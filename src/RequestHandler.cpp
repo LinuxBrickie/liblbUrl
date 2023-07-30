@@ -67,17 +67,37 @@ void RequestHandler::processInfo()
 {
 }
 
-void RequestHandler::respond( ResponseCode rc )
+RequestHandler::Status RequestHandler::respond( ResponseCode rc )
 {
   switch ( rc )
   {
   case ResponseCode::eSuccess:
-    respond( ResponseCode::eSuccess, std::move( receivedData ) );
-    break;
+    return respond( ResponseCode::eSuccess, std::move( receivedData ) );
   default:
-    respond( rc, {} );
-    break;
+    return respond( rc, {} );
   }
+}
+
+bool RequestHandler::updatePersisting()
+{
+  return update();
+}
+
+bool RequestHandler::closePersisting()
+{
+  return close();
+}
+
+bool RequestHandler::update()
+{
+  // Do nothing
+  return true;
+}
+
+bool RequestHandler::close()
+{
+  // Do nothing
+  return true;
 }
 
 // static

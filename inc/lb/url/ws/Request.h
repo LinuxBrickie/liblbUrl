@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_HTTP_REQUEST_H
-#define LIB_LB_URL_HTTP_REQUEST_H
+#ifndef LIB_LB_URL_WS_REQUEST_H
+#define LIB_LB_URL_WS_REQUEST_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,11 +18,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "../mime/MimePart.h"
-
 #include <functional>
 #include <string>
-#include <vector>
+
+#include <lb/url/ws/Receivers.h>
 
 
 namespace lb
@@ -33,7 +32,7 @@ namespace url
 {
 
 
-namespace http
+namespace ws
 {
 
 
@@ -41,53 +40,32 @@ struct Request
 {
   Request() = default;
 
+  Request( std::string url
+         , Receivers::DataReceiver dr
+         , Receivers::ControlReceiver cr
+         , size_t closeTimeoutMilliseconds = 2000 )
+    : url{ url }
+    , receivers{ std::move( dr ), std::move( cr ) }
+    , closeTimeoutMilliseconds{ closeTimeoutMilliseconds }
+  {
+  }
+
   // Default move/copy construction and assignment.
   Request( Request&& ) = default;
   Request& operator=( Request&& ) = default;
   Request( const Request& ) = default;
   Request& operator=( const Request& ) = default;
 
-  enum class Method
-  {
-    eInvalid,
-    eGet,
-    eHead,
-    ePost,
-    ePut,
-    eDelete
-  } method{ Method::eInvalid };
-
   std::string url;
 
-  using Headers = std::vector<std::string>;
-  Headers headers;
+  /** \brief The interface for receiving from the WebSocket */
+  Receivers receivers;
 
-  /** \brief application/x-www-form-urlencoded POST data.
-
-     Data of the form key1=value1@key2=value2. Values can be blank. Mote that
-     the = and & delimiters are not encoded.
-
-     The data is sent as-is and is assumed to be correctly encoded.
-
-     There is a helper class for creating the string, namely
-     UrlEncodedValuesCreator.
-
-     Sample encoded data would be
-
-     fruit=apple&vegetable=pot%26to&total%25=99.9
-
-     which respresent the {field,value} pairs:
-     - {fruit,apple}
-     - {vegetable,pot&to}
-     - {total%,99.9}
-   */
-  std::string postUrlEncodedValues;
-
-  mime::Mime mimePost;
+  size_t closeTimeoutMilliseconds{ 2000 };
 };
 
 
-} // End of namespace http
+} // End of namespace ws
 
 
 } // End of namespace url
@@ -96,4 +74,4 @@ struct Request
 } // End of namespace lb
 
 
-#endif // LIB_LB_URL_HTTP_REQUEST_H
+#endif // LIB_LB_URL_WS_REQUEST_H

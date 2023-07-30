@@ -18,8 +18,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "http/Request.h"
-#include "http/Response.h"
+#include <lb/url/http/Request.h>
+#include <lb/url/http/Response.h>
+
+#include <lb/url/ws/Request.h>
+#include <lb/url/ws/Response.h>
 
 #include <functional>
 #include <memory>
@@ -43,15 +46,33 @@ namespace url
 class Requester
 {
 public:
-    Requester();
+    struct Config
+    {
+      size_t pollTimeoutMilliseconds{ 500 };
+    };
+
+    static Config defaultConfig() { return Config{}; } // gcc bug workaround
+
+    Requester( Config = defaultConfig() );
     ~Requester();
 
     /** \brief Submit request for URL asynchronously.
-     *
-     *  The call will not block. Instead the request will be serviced in
-     *  a thread and the response function will be invoked upon completion.
+
+        The call will not block. Instead the request will be serviced in
+        a thread and the response function will be invoked upon completion.
      */
     void makeRequest( http::Request, http::Response::Callback );
+
+    /** \brief Submit request to open a WebSocket.
+
+        This is not a typical URL request although it starts out like that. An
+        intiial HTTP connection is made which is then upgraded to a WebSocket
+        connection which is a two-way persistent connection. As such the response
+        "callback" contains an object allowing the caller to send further data
+        over the WebSocket connection. The request object contains an object
+        that \a Requester can pass received data to.
+     */
+    void makeRequest( ws::Request, ws::Response::Callback );
 
     /** \brief Check that the global initialisation of the curl library is successful.
 
@@ -61,7 +82,7 @@ public:
 
     /** \brief A human readable string returned directly from the curl library.
      */
-    static std::string getVersion();
+    static std::string getCurlVersion();
 
 private:
     struct Private;

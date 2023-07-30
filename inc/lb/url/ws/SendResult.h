@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_HTTP_RESPONSE_H
-#define LIB_LB_URL_HTTP_RESPONSE_H
+#ifndef LIB_LB_URL_WS_SENDRESULT_H
+#define LIB_LB_URL_WS_SENDRESULT_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,12 +18,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <lb/url/ResponseCode.h>
-
-#include <functional>
-#include <string>
-#include <vector>
-
 
 namespace lb
 {
@@ -33,29 +27,33 @@ namespace url
 {
 
 
-namespace http
+namespace ws
 {
 
 
-struct Response
+/** \brief The return code from the data and control sending methods on \a Senders. */
+enum class SendResult
 {
-  Response() = default;
+  /** \brief Data message or control frame has been sent succesfully. */
+  eSuccess,
 
-  // Default move construction and move assignment. Copy forbidden.
-  Response( Response&& ) = default;
-  Response& operator=( Response&& ) = default;
-  Response( const Response& ) = delete;
-  Response& operator=( const Response& ) = delete;
+  /** \brief Data message or control frame has *not* been sent succesfully. */
+  eFailure,
 
-  using Callback = std::function< void(ResponseCode, Response) >;
+  /** \brief Connection has been closed, no further data can be sent. */
+  eClosed,
 
-  unsigned int code; //!< e.g. 200, 404, etc.
-  std::string content;
+  /**
+      \brief Sending is prohibited because of an unsuccessful upgrade of the
+             connection i.e. a ResponseCode other than eSuccess was returned
+             from \a Requester::makeRequest and the accompanying \a Response
+             has been default constructed.
+   */
+  eNoImplementation
 };
 
 
-
-} // End of namespace http
+} // End of namespace ws
 
 
 } // End of namespace url
@@ -64,4 +62,4 @@ struct Response
 } // End of namespace lb
 
 
-#endif // LIB_LB_URL_HTTP_RESPONSE_H
+#endif // LIB_LB_URL_WS_SENDRESULT_H

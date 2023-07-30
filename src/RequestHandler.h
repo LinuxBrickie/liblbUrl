@@ -52,10 +52,37 @@ struct RequestHandler
 
   void processInfo();
 
-  void respond( ResponseCode );
+  enum class Status
+  {
+    eFinished,
+    ePersisting,
+  };
+
+  /** \brief Invoke the required response based on the response code.
+      \return The status of the handler, namely is it finished or to persist.
+
+      Typically this will be passing the \a receivedData back through some sort
+      of callback.
+
+      If the handler indicates that its status is \a ePersisting then the next
+      stage is that the \a Requester will invoke \a updatePersisting periodically.
+
+      Note that \a Requester only checks the return value if the \a ResponseCode
+      is \a eSuccess. Might alter this API to make this a bit cleaner.
+   */
+  Status respond( ResponseCode );
+
+  /** \brief Called periodically by \a Requester if \a respond returned \a ePersisting.
+      \return True to keep persisting, false to stop persisting and delete the handler.
+   */
+  bool updatePersisting();
+
+  bool closePersisting();
 
 protected:
-  virtual void respond( ResponseCode, std::string ) = 0;
+  virtual Status respond( ResponseCode, std::string ) = 0;
+  virtual   bool  update();
+  virtual   bool  close();
 
   CURL* easyHandle;
   std::string receivedData;

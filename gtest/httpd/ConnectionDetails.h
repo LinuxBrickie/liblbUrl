@@ -1,6 +1,3 @@
-#ifndef LIB_LB_URL_VERSION_H
-#define LIB_LB_URL_VERSION_H
-
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
 
@@ -17,34 +14,30 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#ifndef CONNECTIONDETAILS_H
+#define CONNECTIONDETAILS_H
 
-// Version macros
-#define LIB_LB_URL_VERSION "1.0.0"
-#define LIB_LB_URL_VERSION_MAJOR 1
-#define LIB_LB_URL_VERSION_MINOR 1
-#define LIB_LB_URL_VERSION_PATCH 0
-#define LIB_LB_URL_VERSION_NUM 0x010000
+#include <lb/httpd/Server.h>
 
 
-namespace lb
+namespace httpd
 {
 
 
-namespace url
+enum class ServerType
 {
-
-/** \brief Contains library version information. */
-const struct Version
-{
-  const unsigned int number{ LIB_LB_URL_VERSION_NUM };
-}
-version;
+  eBasic,     // Just HTTP handling
+  eWebSocket, // HTTP handling and WebSocket support
+};
 
 
-} // End of namespace url
+using ServerConfigs = std::vector< lb::httpd::Server::Config >;
 
 
-} // End of namespace lb
+using ConnectionDetails = std::map< ServerType, ServerConfigs >;
 
 
-#endif // VLIB_LB_URL_ERSION_H
+} // End of namespace httpd
+
+
+#endif // CONNECTIONDETAILS_H

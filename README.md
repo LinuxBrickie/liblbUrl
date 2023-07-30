@@ -7,6 +7,7 @@ lb is short for LinuxBrickie, my online handle.
 ## Dependencies
 
 The main library dependencies are
+- liblbEncoding (available from my github account, licensed under GPL-3.0-or-later)
 - libcurl (licensed under the curl license)
 
 In addition the gtest binary dependencies are
@@ -27,8 +28,14 @@ invoked asynchronously.
 
 ## Notes
 
-Built and tested on Fedora 37 against
+Originally built and tested on Fedora 37 against
 - libcurl 7.85.0
+- libmicrohttpd 0.9.76
+
+The addition of WebSocket supports requires libcurl 7.86.0 or later.
+
+Latest version built and tested on Fedora 38 against
+- libcurl 8.0.1
 - libmicrohttpd 0.9.76
 
 Only basic HTTP is supported at the moment but the design is such that

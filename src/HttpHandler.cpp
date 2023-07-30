@@ -74,9 +74,8 @@ HttpHandler::~HttpHandler()
   curl_slist_free_all( headerList );
 }
 
-void HttpHandler::respond( ResponseCode rc, std::string receivedData )
+RequestHandler::Status HttpHandler::respond( ResponseCode rc, std::string receivedData )
 {
-
   long httpResponseCode;
   const CURLcode cc{ curl_easy_getinfo( easyHandle, CURLINFO_RESPONSE_CODE, &httpResponseCode ) };
   switch( cc )
@@ -97,6 +96,8 @@ void HttpHandler::respond( ResponseCode rc, std::string receivedData )
     responseCallback( ResponseCode::eFailure, {} );
     break;
   }
+
+  return Status::eFinished;
 }
 
 

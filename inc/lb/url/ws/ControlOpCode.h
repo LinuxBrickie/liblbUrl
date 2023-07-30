@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_VERSION_H
-#define LIB_LB_URL_VERSION_H
+#ifndef LIB_LB_URL_WS_CONTROLOPCODE_H
+#define LIB_LB_URL_WS_CONTROLOPCODE_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,14 +18,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Version macros
-#define LIB_LB_URL_VERSION "1.0.0"
-#define LIB_LB_URL_VERSION_MAJOR 1
-#define LIB_LB_URL_VERSION_MINOR 1
-#define LIB_LB_URL_VERSION_PATCH 0
-#define LIB_LB_URL_VERSION_NUM 0x010000
-
-
 namespace lb
 {
 
@@ -33,12 +25,20 @@ namespace lb
 namespace url
 {
 
-/** \brief Contains library version information. */
-const struct Version
+
+namespace ws
 {
-  const unsigned int number{ LIB_LB_URL_VERSION_NUM };
-}
-version;
+
+
+enum class ControlOpCode
+{
+  eClose,
+  ePing,
+  ePong
+};
+
+
+} // End of namespace ws
 
 
 } // End of namespace url
@@ -47,4 +47,4 @@ version;
 } // End of namespace lb
 
 
-#endif // VLIB_LB_URL_ERSION_H
+#endif // LIB_LB_URL_WS_CONTROLOPCODE_H

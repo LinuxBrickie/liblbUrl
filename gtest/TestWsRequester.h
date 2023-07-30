@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
-#define LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
+#ifndef TESTWSREQUESTER_H
+#define TESTWSREQUESTER_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,12 +18,25 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <map>
 #include <string>
+#include <unordered_map>
+
+#include <lb/httpd/Server.h>
+#include <lb/url/ResponseCode.h>
 
 
-const int PORT{ 4567 };
-const std::string HOST{ "localhost" };
-const std::string HOST_COLON_PORT{ HOST + ':' + std::to_string( PORT ) };
+const std::string sendControlCloseMessage{ "SEND BACK CONTROL CLOSE" };
 
 
-#endif // LIB_LB_URL_GTEST_CONNECTIONDETAILS_H
+struct ExpectedResponse
+{
+  lb::url::ResponseCode responseCode; //!< i.e. was it a valid WebSocket URL
+  std::map< std::string, std::string > responseMessages;
+};
+
+//! Keyed by URL path
+extern const std::unordered_map<std::string, ExpectedResponse> WSExpectedMockResponses;
+
+
+#endif // TESTWSREQUESTER_H

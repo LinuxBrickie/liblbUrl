@@ -21,7 +21,7 @@
 
 #include <future>
 
-#include "ConnectionDetails.h"
+#include "ServerList.h"
 
 #include <lb/url/http/UrlEncodedValuesCreator.h>
 #include <lb/url/Requester.h>
@@ -37,7 +37,7 @@ namespace lb { namespace url {
 } }
 
 
-const std::string baseUrl{ "http://" + HOST_COLON_PORT };
+const std::string baseUrl( int port ) { return "http://" + hostColonPort( port ); }
 
 const std::string POST200Url{ "/test/url/http/post/200" };
 const std::string POST404Url{ "/test/url/http/post/404" };
@@ -129,7 +129,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POST200Url,
+        POST200Url,
         {}, // headers
         "Some data for " + POST200Url
       },
@@ -145,7 +145,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POST404Url,
+        POST404Url,
         {}, // headers
         "Some data for " + POST404Url
       },
@@ -161,7 +161,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTMultilineUrl,
+        POSTMultilineUrl,
         {}, // headers
         "Some data for " + POSTMultilineUrl
       },
@@ -184,7 +184,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTUnterminatedUrl,
+        POSTUnterminatedUrl,
         {}, // headers
         "Some data for " + POSTUnterminatedUrl
       },
@@ -200,7 +200,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTContainsNullUrl,
+        POSTContainsNullUrl,
         {}, // headers
         "Some data for " + POSTContainsNullUrl
       },
@@ -216,7 +216,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTFormDataNoEncoding,
+        POSTFormDataNoEncoding,
         {}, // headers
         POSTFormDataUrlNoEncodingDataString()
       },
@@ -233,7 +233,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTFormDataFieldEncoding,
+        POSTFormDataFieldEncoding,
         {}, // headers
         POSTFormDataFieldEncodingDataString()
       },
@@ -250,7 +250,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTFormDataValueEncoding,
+        POSTFormDataValueEncoding,
         {}, // headers
         POSTFormDataValueEncodingDataString()
       },
@@ -267,7 +267,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTFormDataFieldAndValueEncoding,
+        POSTFormDataFieldAndValueEncoding,
         {}, // headers
         POSTFormDataFieldAndValueEncodingDataString()
       },
@@ -284,7 +284,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTFormDataEmptyValue,
+        POSTFormDataEmptyValue,
         {}, // headers
         POSTFormDataEmptyValueDataString()
       },
@@ -301,7 +301,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTFormDataLarge,
+        POSTFormDataLarge,
         {}, // headers
         POSTFormDataLargeDataString()
       },
@@ -324,7 +324,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTMimeFormDataSimple,
+        POSTMimeFormDataSimple,
         {}, // headers
         {}, // x-www-form-urlencoded data, not relevant here
         {
@@ -351,7 +351,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTMimeFormDataContainsNull,
+        POSTMimeFormDataContainsNull,
         {}, // headers
         {}, // x-www-form-urlencoded data, not relevant here
         {
@@ -378,7 +378,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTMimeFormDataLarge,
+        POSTMimeFormDataLarge,
         {}, // headers
         {}, // x-www-form-urlencoded data, not relevant here
         {
@@ -405,7 +405,7 @@ const std::unordered_map<std::string, TestData> POSTTestData
     {
       {
         lb::url::http::Request::Method::ePost,
-        baseUrl + POSTMimeFormDataMulti,
+        POSTMimeFormDataMulti,
         {}, // headers
         {}, // x-www-form-urlencoded data, not relevant here
         {
@@ -447,22 +447,32 @@ TEST(Http, RequesterPost)
 {
   lb::url::Requester requester;
 
-  for ( const auto&[ url, testData ] : POSTTestData )
+  for ( auto&[type, serverConfigs] : serverList )
   {
-    std::promise< std::pair< lb::url::ResponseCode
-                           , lb::url::http::Response > > promise;
-
-    requester.makeRequest( testData.request
-                         , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+    for ( const auto& serverConfig : serverConfigs )
     {
-      promise.set_value( { rc, std::move( r ) } );
-    } );
+      for ( const auto&[ urlPath, testData ] : POSTTestData )
+      {
+        std::promise< std::pair< lb::url::ResponseCode
+                               , lb::url::http::Response > > promise;
 
-    const auto actualResponse{ promise.get_future().get() };
+        // Map Request only contains a URL path so need to build up full URL
+        lb::url::http::Request request{ testData.request };
+        request.url = baseUrl( serverConfig.port ) + request.url;
 
-    ASSERT_EQ( actualResponse.first         , lb::url::ResponseCode::eSuccess );
-    EXPECT_EQ( actualResponse.second.code   , testData.response.code );
-    EXPECT_EQ( actualResponse.second.content, testData.response.content );
+        requester.makeRequest( request
+                             , [ &promise ]( lb::url::ResponseCode rc, lb::url::http::Response r )
+        {
+          promise.set_value( { rc, std::move( r ) } );
+        } );
+
+        const auto actualResponse{ promise.get_future().get() };
+
+        ASSERT_EQ( actualResponse.first         , lb::url::ResponseCode::eSuccess );
+        EXPECT_EQ( actualResponse.second.code   , testData.response.code );
+        EXPECT_EQ( actualResponse.second.content, testData.response.content );
+      }
+    }
   }
 }
 

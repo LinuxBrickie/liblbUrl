@@ -40,7 +40,7 @@ struct HttpHandler : public RequestHandler
   HttpHandler( http::Request r, http::Response::Callback c );
   ~HttpHandler();
 
-  virtual void respond( ResponseCode, std::string );
+  virtual Status respond( ResponseCode, std::string );
 
   http::Request request;
   http::Response::Callback responseCallback;

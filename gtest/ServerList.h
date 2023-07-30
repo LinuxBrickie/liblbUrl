@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_VERSION_H
-#define LIB_LB_URL_VERSION_H
+#ifndef LIB_LB_URL_GTEST_SERVERLIST_H
+#define LIB_LB_URL_GTEST_SERVERLIST_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -18,33 +18,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Version macros
-#define LIB_LB_URL_VERSION "1.0.0"
-#define LIB_LB_URL_VERSION_MAJOR 1
-#define LIB_LB_URL_VERSION_MINOR 1
-#define LIB_LB_URL_VERSION_PATCH 0
-#define LIB_LB_URL_VERSION_NUM 0x010000
+#include "httpd/ConnectionDetails.h"
 
 
-namespace lb
+const httpd::ConnectionDetails serverList
 {
+  { httpd::ServerType::eBasic    , { { 4000 } } },
+  { httpd::ServerType::eWebSocket, { { 5000 }, { 5001, 1 } } }
+};
 
 
-namespace url
-{
-
-/** \brief Contains library version information. */
-const struct Version
-{
-  const unsigned int number{ LIB_LB_URL_VERSION_NUM };
-}
-version;
+inline
+std::string hostColonPort( int port ) { return "localhost:" + std::to_string( port ); }
 
 
-} // End of namespace url
-
-
-} // End of namespace lb
-
-
-#endif // VLIB_LB_URL_ERSION_H
+#endif // LIB_LB_URL_GTEST_SERVERLIST_H

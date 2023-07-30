@@ -1,5 +1,5 @@
-#ifndef LIB_LB_URL_HTTP_RESPONSE_H
-#define LIB_LB_URL_HTTP_RESPONSE_H
+#ifndef LIB_LB_URL_WS_RESPONSE_H
+#define LIB_LB_URL_WS_RESPONSE_H
 
 /*
     Copyright (C) 2023  Paul Fotheringham (LinuxBrickie)
@@ -19,10 +19,10 @@
 */
 
 #include <lb/url/ResponseCode.h>
+#include <lb/url/ws/ConnectionID.h>
+#include <lb/url/ws/Senders.h>
 
 #include <functional>
-#include <string>
-#include <vector>
 
 
 namespace lb
@@ -33,10 +33,18 @@ namespace url
 {
 
 
-namespace http
+namespace ws
 {
 
 
+/**
+    \brief Response to the initial WebSocket HTTP(S) GET request.
+
+    If the GET request is successful then the connection is upgraded to a
+    two-way WebSocket connection.  This \a Response object provides the means
+    to write data to the WebSocket (the \a Request object is where the request
+    maker registers the means of reading data from the WebSocket).
+ */
 struct Response
 {
   Response() = default;
@@ -49,13 +57,22 @@ struct Response
 
   using Callback = std::function< void(ResponseCode, Response) >;
 
-  unsigned int code; //!< e.g. 200, 404, etc.
-  std::string content;
+  /** \brief The unique identifier for the connection.
+
+      This is passes to the ReceiveInterface callbacks so that the messages can
+      be identified with a particular WebSocket connection.
+
+      There is no need to specify the ID when sending data as the \a senders
+      implementation knows which WebSocket connection it is associated with.
+   */
+  ConnectionID connectionID;
+
+  /** \brief The interface for sending to the WebSocket */
+  Senders senders;
 };
 
 
-
-} // End of namespace http
+} // End of namespace ws
 
 
 } // End of namespace url
@@ -64,4 +81,4 @@ struct Response
 } // End of namespace lb
 
 
-#endif // LIB_LB_URL_HTTP_RESPONSE_H
+#endif // LIB_LB_URL_WS_RESPONSE_H
