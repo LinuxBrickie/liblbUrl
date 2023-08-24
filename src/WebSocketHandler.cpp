@@ -141,131 +141,45 @@ bool WebSocketHandler::update()
   // May not receive a full message, only a frame. If the message fits in the
   // one frame then we dispatch it right away, otherwise it gets built up in
   // receivedMessage and dispatched on the last frame.
-  size_t numBytesReceived;
-  struct curl_ws_frame *meta;
-  char buffer[256];
+  //
+  // We might not even get a full frame. We have to keep calling curl_ws_recv
+  // until either the number of bytes received is less than the buffer size or
+  // we get CURLE_GOT_NOTHING.
+  curl_ws_frame* meta{ nullptr };
+  std::string frame;
+  bool frameIncomplete{ true };
 
-  const CURLcode result = curl_ws_recv( easyHandle, buffer, sizeof(buffer), &numBytesReceived, &meta );
-
-  switch( result )
+  while( frameIncomplete )
   {
-  case CURLE_OK: // Fall through
-    if ( !meta )
-    {
-      ws::Senders::Impl::close( senders );
-      std::cerr << "No meta with frame! Result code: " << result << std::endl;
-      return false;
-    }
-    //std::cout << "curl_ws_recv got flags " << meta->flags << " with " << numBytesReceived << " bytes of payload: " << std::string( buffer, numBytesReceived ) << std::endl;
-    //print( *meta );
+    size_t numBytesReceived;
+    const size_t BUFFER_SIZE{ 256 };
+    char buffer[ BUFFER_SIZE ];
 
-// WARNING: libcurl support for fragmanted frames is broken! The FIN bit is not
-//          exposed in meta. As such this code will only work for unfragmented
-//          messages.
-//
-// The CURLWS_ flags correspond to opcodes so they are not really flags. The
-// first frame will be CURLWS_TEXT or CURLWS_BINARY regardless of whether the
-// message is fragmented or not.
-    if ( meta->flags & CURLWS_TEXT )
-    {
-      //if ( FIN bit set )
-      //{
-      if ( !request.receivers.receiveData( connectionID
-                                         , ws::DataOpCode::eText
-                                         , { buffer, numBytesReceived } ) )
-      {
-        std::cout << "Receiver no longer receiving data." << std::endl;
-      }
-      //}
-      //else
-      //{
-      //  receivedMessage.append( buffer, numBytesReceived );
-      //}
-    }
-    else if ( meta->flags & CURLWS_BINARY )
-    {
-      // In practice they may be supported, just not tested. TODO
-      ws::Senders::Impl::close( senders );
-      std::cerr << "Binary frames not yet supported!" << std::endl;
-      return false;
-    }
-    else if ( meta->flags & CURLWS_CONT )
-    {
-      receivedMessage.append( buffer, numBytesReceived );
-      //if ( FIN bit set )
-      //{
-      //  std::string data;
-      //  data.swap( receivedMessage );
-      //  if ( !request.receivers.receiveData( connectionID
-      //                                     , ws::DataOpCode::eText
-      //                                     , std::move( data ) ) )
-      //  {
-      //    std::cout << "Receiver no longer receiving data." << std::endl;
-      //  }
-      //}
-    }
-    else if ( meta->flags & CURLWS_CLOSE )
-    {
-      std::string payload{ buffer, numBytesReceived };
+    const CURLcode result = curl_ws_recv( easyHandle, buffer, sizeof(buffer), &numBytesReceived, &meta );
 
-      if ( awaitingCloseConfirmation )
-      {
-        // Close initiated at this end so clearly the user knows we are going
-        // away but no harm in filtering the confirmation up.
-        awaitingCloseConfirmation = false;
-      }
-      else
-      {
-        const auto status
-        {
-          encoding::websocket::decodePayloadCloseStatusCode( payload )
-        };
-        if ( status )
-        {
-          senders.sendClose( *status, payload.substr( 2 ) );
-        }
-        else
-        {
-          std::cerr << "Invalid close connection status code received" << std::endl;
-          // RFC says we MUST send a close frame with the same information...
-        }
-      }
-      if ( !request.receivers.receiveControl( connectionID
-                                            , ws::ControlOpCode::eClose
-                                            , std::move( payload ) ) )
-      {
-        std::cout << "Receiver no longer receiving control." << std::endl;
-      }
-      ws::Senders::Impl::close( senders );
-      return false;
-    }
-    else if ( meta->flags & CURLWS_PING )
+    switch( result )
     {
-      std::cout << "Received PING frame!" << std::endl;
-      senders.sendPong( { buffer, numBytesReceived } );
+    case CURLE_OK:
+      frame.append( buffer, numBytesReceived );
+      if ( numBytesReceived < BUFFER_SIZE )
+      {
+        frameIncomplete = false;
+      }
+      break;
+    case CURLE_GOT_NOTHING:
+      frameIncomplete = false;
+      break;
+    case CURLE_AGAIN:
+      // Fine, just means there is no data to receive.
       return true;
+    default:
+      ws::Senders::Impl::close( senders );
+      std::cerr << "curl_ws_recv error: " << curl_easy_strerror( result ) << std::endl;
+      return false;
     }
-    else if ( meta->flags & CURLWS_PONG )
-    {
-      if ( awaitingPong )
-      {
-        std::cout << "Received PONG." << std::endl;
-        awaitingPong = false;
-      }
-      else
-      {
-        std::cout << "Received unsolicited PONG." << std::endl;
-      }
-    }
-    break;
-  case CURLE_AGAIN:
-    // Fine, just means there is no data to receive.
-    break;
-  default:
-    ws::Senders::Impl::close( senders );
-    std::cerr << "curl_ws_recv error: " << curl_easy_strerror( result ) << std::endl;
-    return false;
   }
+
+  processFrame( *meta, frame );
 
   return true;
 }
@@ -276,7 +190,99 @@ bool WebSocketHandler::close()
 
   if ( !awaitingCloseConfirmation )
   {
-    sendClose( encoding::websocket::CloseStatusCode::eGoingAway, "Client shutdown" );
+    sendClose( encoding::websocket::closestatus::toPayload(
+                 encoding::websocket::closestatus::ProtocolCode::eGoingAway )
+             , "Client shutdown" );
+  }
+
+  return true;
+}
+
+bool WebSocketHandler::processFrame( curl_ws_frame& meta
+                                   , const std::string& frame )
+{
+  if ( meta.flags & CURLWS_TEXT )
+  {
+    //if ( FIN bit set )
+    //{
+    if ( !request.receivers.receiveData( connectionID
+                                       , ws::DataOpCode::eText
+                                       , frame ) )
+    {
+      std::cout << "Receiver no longer receiving data." << std::endl;
+    }
+    //}
+    //else
+    //{
+    //  receivedMessage.append( message, numMessageBytes );
+    //}
+  }
+  else if ( meta.flags & CURLWS_BINARY )
+  {
+    // In practice they may be supported, just not tested. TODO
+    ws::Senders::Impl::close( senders );
+    std::cerr << "Binary frames not yet supported!" << std::endl;
+    return false;
+  }
+  else if ( meta.flags & CURLWS_CONT )
+  {
+    receivedMessage.append( frame );
+    //if ( FIN bit set )
+    //{
+    //  std::string data;
+    //  data.swap( receivedMessage );
+    //  if ( !request.receivers.receiveData( connectionID
+    //                                     , ws::DataOpCode::eText
+    //                                     , std::move( data ) ) )
+    //  {
+    //    std::cout << "Receiver no longer receiving data." << std::endl;
+    //  }
+    //}
+  }
+  else if ( meta.flags & CURLWS_CLOSE )
+  {
+    std::string payload{ frame };
+
+    if ( awaitingCloseConfirmation )
+    {
+      // Close initiated at this end so clearly the user knows we are going
+      // away but no harm in filtering the confirmation up.
+      awaitingCloseConfirmation = false;
+    }
+    else
+    {
+      const auto payloadCode
+      {
+        encoding::websocket::closestatus::decodePayloadCode( payload )
+      };
+      // If the code is the "absent" code what do we send back? - TODO
+      senders.sendClose( payloadCode, payload.substr( 2 ) );
+    }
+    if ( !request.receivers.receiveControl( connectionID
+                                          , ws::ControlOpCode::eClose
+                                          , std::move( payload ) ) )
+    {
+      std::cout << "Receiver no longer receiving control." << std::endl;
+    }
+    ws::Senders::Impl::close( senders );
+    return false;
+  }
+  else if ( meta.flags & CURLWS_PING )
+  {
+    std::cout << "Received PING frame!" << std::endl;
+    senders.sendPong( frame );
+  }
+  else if ( meta.flags & CURLWS_PONG )
+  {
+    if ( awaitingPong )
+    {
+      std::cout << "Received PONG." << std::endl;
+      awaitingPong = false;
+    }
+    else
+    {
+      std::cout << "Received unsolicited PONG." << std::endl;
+    }
   }
 
   return true;
@@ -320,7 +326,7 @@ ws::SendResult WebSocketHandler::sendData( ws::DataOpCode opCode
   return ws::SendResult::eSuccess;
 }
 
-ws::SendResult WebSocketHandler::sendClose( encoding::websocket::CloseStatusCode code
+ws::SendResult WebSocketHandler::sendClose( encoding::websocket::closestatus::PayloadCode code
                                           , const std::string& reason )
 {
   std::scoped_lock l{ mutex };
@@ -334,7 +340,7 @@ ws::SendResult WebSocketHandler::sendClose( encoding::websocket::CloseStatusCode
   size_t numBytesSent{ 0 };
 
   std::string payload{ "\0\0", 2 };
-  encoding::websocket::encodePayloadCloseStatusCode( code, payload );
+  encoding::websocket::closestatus::encodePayloadCode( code, payload );
   payload.append( reason );
 
   const CURLcode result

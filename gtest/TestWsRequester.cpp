@@ -177,7 +177,8 @@ struct ChallengeConnection
       {
         auto sendResult
         {
-          actualResponse.senders.sendClose( lb::encoding::websocket::CloseStatusCode::eNormal
+          actualResponse.senders.sendClose( lb::encoding::websocket::closestatus::toPayload(
+                                              lb::encoding::websocket::closestatus::ProtocolCode::eNormal )
                                           , clientCloseReason )
         };
         EXPECT_EQ( sendResult, lb::url::ws::SendResult::eSuccess );
@@ -188,16 +189,18 @@ struct ChallengeConnection
       ASSERT_TRUE( actualControlPair.second.size() >= 2 );
       const auto actualStatusCode
       {
-        lb::encoding::websocket::decodePayloadCloseStatusCode( actualControlPair.second )
+        lb::encoding::websocket::closestatus::decodePayloadCode( actualControlPair.second )
       };
-      ASSERT_TRUE( actualStatusCode );
-      EXPECT_EQ( *actualStatusCode, lb::encoding::websocket::CloseStatusCode::eNormal );
+      EXPECT_EQ( actualStatusCode
+               , lb::encoding::websocket::closestatus::toPayload(
+                   lb::encoding::websocket::closestatus::ProtocolCode::eNormal ) );
       EXPECT_EQ( actualControlPair.second.substr( 2 ), serverAskedToClose ? serverCloseReason : clientCloseReason );
 
       // Should not be able to send anything now.
       auto sendResult = actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, "blah" );
       EXPECT_EQ( sendResult, lb::url::ws::SendResult::eClosed );
-      sendResult = actualResponse.senders.sendClose( lb::encoding::websocket::CloseStatusCode::eNormal );
+      sendResult = actualResponse.senders.sendClose( lb::encoding::websocket::closestatus::toPayload(
+                                                       lb::encoding::websocket::closestatus::ProtocolCode::eNormal ) );
       EXPECT_EQ( sendResult, lb::url::ws::SendResult::eClosed );
     }
     else if ( actualResponseCode == lb::url::ResponseCode::eFailure )
@@ -206,7 +209,8 @@ struct ChallengeConnection
       auto sendResult = actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, "blah" );
       EXPECT_EQ( sendResult, lb::url::ws::SendResult::eNoImplementation );
       sendResult =
-          actualResponse.senders.sendClose( lb::encoding::websocket::CloseStatusCode::eNormal
+          actualResponse.senders.sendClose( lb::encoding::websocket::closestatus::toPayload(
+                                              lb::encoding::websocket::closestatus::ProtocolCode::eNormal )
                                           , "Test finished" );
       EXPECT_EQ( sendResult, lb::url::ws::SendResult::eNoImplementation );
     }

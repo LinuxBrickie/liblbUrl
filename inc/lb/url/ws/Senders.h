@@ -57,7 +57,7 @@ public:
 
   SendResult sendData( DataOpCode, std::string message ) const;
 
-  SendResult sendClose( encoding::websocket::CloseStatusCode, std::string reason = {} ) const;
+  SendResult sendClose( encoding::websocket::closestatus::PayloadCode, std::string reason = {} ) const;
   SendResult sendPing( std::string payload ) const;
   SendResult sendPong( std::string payload ) const;
 

@@ -60,7 +60,8 @@ void dataReceiver( lb::httpd::ws::ConnectionID id, std::string data )
         {
           const lb::httpd::ws::SendResult result
           {
-            wsInfo.dataSender.sendClose( lb::encoding::websocket::CloseStatusCode::eNormal
+            wsInfo.dataSender.sendClose( lb::encoding::websocket::closestatus::toPayload(
+                                           lb::encoding::websocket::closestatus::ProtocolCode::eNormal )
                                        , response )
           };
           switch ( result )

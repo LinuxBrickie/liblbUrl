@@ -44,7 +44,7 @@ SendResult Senders::sendData( DataOpCode opCode, std::string message ) const
   }
 }
 
-SendResult Senders::sendClose( encoding::websocket::CloseStatusCode code
+SendResult Senders::sendClose( encoding::websocket::closestatus::PayloadCode code
                              , std::string reason ) const
 {
   if ( d )

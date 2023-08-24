@@ -86,8 +86,10 @@ struct WebSocketHandler : public RequestHandler
 
   virtual bool close();
 
+  bool processFrame( curl_ws_frame& meta, const std::string& frame );
+
   ws::SendResult sendData( ws::DataOpCode, const std::string& );
-  ws::SendResult sendClose( encoding::websocket::CloseStatusCode code
+  ws::SendResult sendClose( encoding::websocket::closestatus::PayloadCode code
                           , const std::string& reason );
   ws::SendResult sendPing( const std::string& payload );
   ws::SendResult sendPong( const std::string& payload );

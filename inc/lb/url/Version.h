@@ -19,7 +19,7 @@
 */
 
 // Version macros
-#define LIB_LB_URL_VERSION "1.0.0"
+#define LIB_LB_URL_VERSION "1.1.0"
 #define LIB_LB_URL_VERSION_MAJOR 1
 #define LIB_LB_URL_VERSION_MINOR 1
 #define LIB_LB_URL_VERSION_PATCH 0
