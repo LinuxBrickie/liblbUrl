@@ -86,7 +86,7 @@ struct WebSocketHandler : public RequestHandler
 
   virtual bool close();
 
-  bool processFrame( curl_ws_frame& meta, const std::string& frame );
+  void processFrame( const curl_ws_frame& meta, const std::string& frame );
 
   ws::SendResult sendData( ws::DataOpCode, const std::string& );
   ws::SendResult sendClose( encoding::websocket::closestatus::PayloadCode code
@@ -108,9 +108,24 @@ struct WebSocketHandler : public RequestHandler
   //! THe message currently being received (if split across multiple frames)
   std::string receivedMessage;
 
-  bool awaitingCloseConfirmation{ false };
+  // Note that there is no transition from eSergverInitiated to eComplete as we
+  // have no way to detect it. They are, effectively, the same state.
+  enum class CloseHandshake
+  {
+    eNone,
+    eServerInitiated,
+    eClientInitiated,
+    eComplete
+  };
+  CloseHandshake closeHandshake{ CloseHandshake::eNone };
+
   using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
   TimePoint closeSentTimePoint;
+  // Re-try three times at most to the server if it initiates a close.
+  int numRemainingCloseResponseAttempts = 3;
+  // Cache these out in case we need to retry echoing the close control frame.
+  encoding::websocket::closestatus::PayloadCode serverClosePayloadCode;
+  std::string serverCloseReason;
 
   bool awaitingPong{ false };
 };

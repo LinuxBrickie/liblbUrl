@@ -103,7 +103,7 @@ struct Requester::Private
     while( stillPersistingRequests() )
     {
       using namespace std::chrono_literals;
-      // May as well do this at the same granularoty as the run() loop as that
+      // May as well do this at the same granularity as the run() loop as that
       // is what we will be waiting for.
       std::this_thread::sleep_for( std::chrono::milliseconds( config.pollTimeoutMilliseconds ) );
     }
