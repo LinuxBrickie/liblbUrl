@@ -39,7 +39,9 @@ bool mockIsHandled( const std::string& urlPath )
         && ( urlPath.substr( urlPath.size() - invalid.size() ) != invalid ) );
 }
 
-void dataReceiver( lb::httpd::ws::ConnectionID id, std::string data )
+void dataReceiver( lb::httpd::ws::ConnectionID id
+                 , lb::httpd::ws::Receivers::DataOpCode dataOpCode
+                 , std::string data )
 {
   std::string response;
 
@@ -106,7 +108,7 @@ void controlReceiver( lb::httpd::ws::ConnectionID id
                     , lb::httpd::ws::Receivers::ControlOpCode opCode
                     , std::string payload )
 {
-  // Left as a no-op since Server will handle all ctronol frames for us, this
+  // Left as a no-op since Server will handle all control frames for us, this
   // callback is just a notification that one was received, there is nothing
   // expected from us in here.
 }
