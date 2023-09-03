@@ -179,7 +179,10 @@ bool WebSocketHandler::update()
     }
   }
 
-  processFrame( *meta, frame );
+  if ( !processFrame( *meta, frame ) )
+  {
+    return false;
+  }
 
   return true;
 }
