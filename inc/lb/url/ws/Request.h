@@ -36,16 +36,24 @@ namespace ws
 {
 
 
+/**
+    \brief An object representing a WebSocket request.
+
+    Comprises
+    - the URL to send the initial GET request to
+    - a Receivers object that will be fed incoming WebSocket traffic
+    - a timeout for forcefully terminating the connection if the close handshake
+      hangs.
+ */
 struct Request
 {
   Request() = default;
 
   Request( std::string url
-         , Receivers::DataReceiver dr
-         , Receivers::ControlReceiver cr
+         , Receivers r
          , size_t closeTimeoutMilliseconds = 2000 )
     : url{ url }
-    , receivers{ std::move( dr ), std::move( cr ) }
+    , receivers{ std::move( r ) }
     , closeTimeoutMilliseconds{ closeTimeoutMilliseconds }
   {
   }

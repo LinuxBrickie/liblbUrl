@@ -55,7 +55,18 @@ public:
   Senders( const Senders& ) = default;
   Senders& operator=( const Senders& ) = default;
 
-  SendResult sendData( DataOpCode, std::string message ) const;
+  static const size_t UNLIMITED_FRAME_SIZE;
+
+  /**
+      \brief Send text or binary data to the WebSocket.
+      \param dataOpCode Whether the message is text or binary.
+      \param message The WebSocket frame payload.
+      \param maxFrameSize Maximum frame size. Zero implies unlimited.
+
+      If a frame's size exceeds \a maxFrameSize then the server will split the
+      frame up into multiple frames and send a fragmented message.
+   */
+  SendResult sendData( DataOpCode, std::string message, size_t maxFrameSize = UNLIMITED_FRAME_SIZE ) const;
 
   SendResult sendClose( encoding::websocket::closestatus::PayloadCode, std::string reason = {} ) const;
   SendResult sendPing( std::string payload ) const;

@@ -32,10 +32,14 @@ Originally built and tested on Fedora 37 against
 - libcurl 7.85.0
 - libmicrohttpd 0.9.76
 
-The addition of WebSocket supports requires libcurl 7.86.0 or later.
+The addition of WebSocket support requires reasonably up-to-date versions
+of libcurl. Specifically: 
+
+- version 1.1.0 requires libcurl 7.86.0 or later, up to 8.1.2.
+- version 1.2.0 requires libcurl 8.2.0 or later.
 
 Latest version built and tested on Fedora 38 against
-- libcurl 8.0.1
+- libcurl master as of 17th Sep 2023.
 - libmicrohttpd 0.9.76
 
 Only basic HTTP is supported at the moment but the design is such that

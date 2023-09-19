@@ -22,11 +22,19 @@
 
 TEST(Library, Version)
 {
-  EXPECT_EQ( LIB_LB_URL_VERSION, "1.1.0" );
-  EXPECT_EQ( LIB_LB_URL_VERSION_MAJOR, 1 );
-  EXPECT_EQ( LIB_LB_URL_VERSION_MINOR, 1 );
-  EXPECT_EQ( LIB_LB_URL_VERSION_PATCH, 0 );
-  EXPECT_EQ( LIB_LB_URL_VERSION_NUM, 0x010000 );
+  const int major{ 1 };
+  const int minor{ 2 };
+  const int patch{ 0 };
 
-  EXPECT_EQ( lb::url::version.number, 0x010000 );
+  const int version{ ( major << 16 ) + ( minor <<  8 ) + ( patch <<  0 ) };
+
+  EXPECT_EQ( LIB_LB_URL_VERSION, std::to_string( major ) + '.'
+                               + std::to_string( minor ) + '.'
+                               + std::to_string( patch ) );
+  EXPECT_EQ( LIB_LB_URL_VERSION_MAJOR, major );
+  EXPECT_EQ( LIB_LB_URL_VERSION_MINOR, minor );
+  EXPECT_EQ( LIB_LB_URL_VERSION_PATCH, patch );
+  EXPECT_EQ( LIB_LB_URL_VERSION_NUM, version );
+
+  EXPECT_EQ( lb::url::version.number, version );
 }

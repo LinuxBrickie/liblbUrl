@@ -39,7 +39,7 @@ namespace ws
 
 struct Senders::Impl
 {
-  using DataSender  = std::function<SendResult( DataOpCode, const std::string& )>;
+  using DataSender  = std::function<SendResult( DataOpCode, const std::string&, size_t )>;
   using CloseSender = std::function<SendResult( encoding::websocket::closestatus::PayloadCode
                                               , const std::string& )>;
   using PingSender  = std::function<SendResult( const std::string& )>;
@@ -72,12 +72,14 @@ struct Senders::Impl
   {
   }
 
-  SendResult sendData( DataOpCode opCode, const std::string& message ) const
+  SendResult sendData( DataOpCode opCode
+                     , const std::string& message
+                     , size_t maxFrameSize ) const
   {
     std::scoped_lock l{ mutex };
     if ( dataSender )
     {
-      return dataSender( opCode, message );
+      return dataSender( opCode, message, maxFrameSize );
     }
 
     return SendResult::eClosed;

@@ -32,11 +32,16 @@ namespace ws
 {
 
 
-SendResult Senders::sendData( DataOpCode opCode, std::string message ) const
+const size_t Senders::UNLIMITED_FRAME_SIZE{ 0 };
+
+
+SendResult Senders::sendData( DataOpCode opCode
+                            , std::string message
+                            , size_t maxFrameSize ) const
 {
   if ( d )
   {
-    return d->sendData( opCode, message );
+    return d->sendData( opCode, message, maxFrameSize );
   }
   else
   {

@@ -26,6 +26,7 @@
 #include <lb/url/ResponseCode.h>
 
 
+const std::string ping{ "PING" };
 const std::string sendControlCloseMessage{ "SEND BACK CONTROL CLOSE" };
 
 

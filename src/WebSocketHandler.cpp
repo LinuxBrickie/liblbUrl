@@ -18,6 +18,8 @@
 #include "WebSocketHandler.h"
 #include "ws/SendersImpl.h"
 
+#include <lb/encoding/websocket.h>
+
 #include <iostream>
 
 
@@ -72,7 +74,8 @@ RequestHandler::Status WebSocketHandler::respond( ResponseCode rc
             std::bind( &WebSocketHandler::sendData
                      , this
                      , std::placeholders::_1
-                     , std::placeholders::_2 ),
+                     , std::placeholders::_2
+                     , std::placeholders::_3 ),
             std::bind( &WebSocketHandler::sendClose
                      , this
                      , std::placeholders::_1,
@@ -177,7 +180,7 @@ bool WebSocketHandler::update()
     // We might not even get a full frame. We have to keep calling curl_ws_recv
     // until either the number of bytes received is less than the buffer size or
     // we get CURLE_GOT_NOTHING.
-    curl_ws_frame* meta{ nullptr };
+    const curl_ws_frame* meta{ nullptr };
     std::string frame;
     bool frameIncomplete{ true };
 
@@ -343,6 +346,14 @@ void WebSocketHandler::processFrame( const curl_ws_frame& meta
   else if ( meta.flags & CURLWS_PING )
   {
     //std::cout << "Received PING frame!" << std::endl;
+
+    if ( !request.receivers.receiveControl( connectionID
+                                          , ws::ControlOpCode::ePing
+                                          , payload ) )
+    {
+      std::cout << "Receiver no longer receiving control." << std::endl;
+    }
+
     sendPong( payload );
   }
   else if ( meta.flags & CURLWS_PONG )
@@ -350,6 +361,12 @@ void WebSocketHandler::processFrame( const curl_ws_frame& meta
     if ( awaitingPong )
     {
       //std::cout << "Received PONG." << std::endl;
+      if ( !request.receivers.receiveControl( connectionID
+                                            , ws::ControlOpCode::ePong
+                                            , payload ) )
+      {
+        std::cout << "Receiver no longer receiving control." << std::endl;
+      }
       awaitingPong = false;
     }
     else
@@ -360,7 +377,8 @@ void WebSocketHandler::processFrame( const curl_ws_frame& meta
 }
 
 ws::SendResult WebSocketHandler::sendData( ws::DataOpCode opCode
-                                         , const std::string& message )
+                                         , const std::string& message
+                                         , size_t maxFrameSize )
 {
   std::scoped_lock l{ mutex };
 
@@ -370,19 +388,63 @@ ws::SendResult WebSocketHandler::sendData( ws::DataOpCode opCode
     return ws::SendResult::eClosed;
   }
 
-  size_t numBytesSent{ 0 };
+  size_t numBytesSent{};
+  size_t numPayloadBytesToSend{ message.size() };
+  size_t numPayloadBytesRemaining{ message.size() };
 
-  // If this needs to be multiple calls then set the CURLWS_OFFSET bit and on
-  // the first call the second last argument should be the total size we are
-  // sendinf across all calls.
+  // libcurl calls these "flags" and the CURLWS_ values are bit masks which is
+  // completely misleading as they are *not* to be ORed together.
+  //
+  // TODO - There is no correct combination of flags for curl_ws_send for
+  // fragmented messages and any attempt to OR in CURLWS_CONT immediately
+  // gives a send error! For now the maxFrameSize > 0 code is a placeholder
+  // until the issues with libcurl can be resolved.
+  int flags
+  {
+    ( ( opCode == ws::DataOpCode::eText ) ? CURLWS_TEXT : CURLWS_BINARY )
+  };
+
+  const char* p{ message.c_str() };
+  if ( maxFrameSize != ws::Senders::UNLIMITED_FRAME_SIZE )
+  {
+    std::cerr << "Sending fragmented messages not currently possible" << std::endl;
+//    const auto maxEncodedHeaderSize
+//    {
+//      encoding::websocket::Header::encodedSizeInBytes( numPayloadBytesRemaining, true )
+//    };
+//    if ( maxFrameSize <= maxEncodedHeaderSize )
+//    {
+//      return ws::SendResult::eFailure;
+//    }
+//    while ( numPayloadBytesRemaining + maxEncodedHeaderSize > maxFrameSize )
+//    {
+//      // First or Continuation (if any)
+//      numPayloadBytesToSend = maxFrameSize - maxEncodedHeaderSize;
+
+//      //std::cout << "Sending frame..." << std::endl;
+//      const CURLcode result
+//      {
+//        curl_ws_send( easyHandle
+//                    , p
+//                    , numPayloadBytesToSend
+//                    , &numBytesSent
+//                    , 0
+//                    , flags )
+//      };
+//      flags |= CURLWS_CONT;
+//      numPayloadBytesRemaining -= numPayloadBytesToSend;
+//      p += numPayloadBytesToSend;
+//    }
+  }
+
   const CURLcode result
   {
     curl_ws_send( easyHandle
-                , message.c_str()
-                , message.size()
+                , p
+                , numPayloadBytesToSend
                 , &numBytesSent
                 , 0
-                , ( ( opCode == ws::DataOpCode::eText ) ? CURLWS_TEXT : CURLWS_BINARY ) )
+                , flags )
   };
 
   switch( result )
