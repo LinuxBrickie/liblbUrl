@@ -19,11 +19,10 @@ LBENCODINGPATH := ../liblbEncoding
 LBENCODINGINC := -I $(LBENCODINGPATH)/inc
 LBENCODINGLD := -L$(LBENCODINGPATH) -llbEncoding
 
-CURLPATH := ../../../C/lb/curl
 #CURLPATH := ../../../C/curl
-CURLINC := -I $(CURLPATH)/include
-CURLLD := -L$(CURLPATH)/lib/.libs -lcurl
-#CURLLD := -lcurl
+#CURLINC := -I $(CURLPATH)/include
+#CURLLD := -L$(CURLPATH)/lib/.libs -lcurl
+CURLLD := -lcurl
 
 LBHTTPDPATH := ../liblbHttpd
 LBHTTPDINC := -I $(LBHTTPDPATH)/inc
