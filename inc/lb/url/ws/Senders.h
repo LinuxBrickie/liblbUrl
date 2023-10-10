@@ -18,6 +18,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <future>
 #include <memory>
 #include <string>
 
@@ -66,11 +67,11 @@ public:
       If a frame's size exceeds \a maxFrameSize then the server will split the
       frame up into multiple frames and send a fragmented message.
    */
-  SendResult sendData( DataOpCode, std::string message, size_t maxFrameSize = UNLIMITED_FRAME_SIZE ) const;
+  std::future<SendResult> sendData( DataOpCode, std::string message, size_t maxFrameSize = UNLIMITED_FRAME_SIZE ) const;
 
-  SendResult sendClose( encoding::websocket::closestatus::PayloadCode, std::string reason = {} ) const;
-  SendResult sendPing( std::string payload ) const;
-  SendResult sendPong( std::string payload ) const;
+  std::future<SendResult> sendClose( encoding::websocket::closestatus::PayloadCode, std::string reason = {} ) const;
+  std::future<SendResult> sendPing( std::string payload ) const;
+  std::future<SendResult> sendPong( std::string payload ) const;
 
   struct Impl; //!< Opaque implementation detail.
 

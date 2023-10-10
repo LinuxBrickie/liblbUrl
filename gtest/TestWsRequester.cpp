@@ -139,24 +139,24 @@ struct ChallengeConnection
     lb::url::ws::Receivers receivers
     {
       [&rps, &responseIndex, numExpectedResponses]( lb::url::ws::ConnectionID
-                                                                               , lb::url::ws::DataOpCode op
-                                                                               , std::string r ) // data receiver
-                                   {
-                                     ASSERT_LT( responseIndex, numExpectedResponses );
-                                     ActualResponse response;
-                                     response.dataOpCode = op;
-                                     response.message = std::move( r );
-                                     rps[responseIndex++].set_value( std::move( response ) );
-                                   }
-                                 , [&rps, &responseIndex, numExpectedResponses]( lb::url::ws::ConnectionID
-                                                                               , lb::url::ws::ControlOpCode op
-                                                                               , std::string r ) // control receiver
-                                   {
-                                     ActualResponse response;
-                                     response.controlOpCode = op;
-                                     response.message = std::move( r );
-                                     rps[responseIndex++].set_value( std::move( response ) );
-                                   }
+                                                  , lb::url::ws::DataOpCode op
+                                                  , std::string r ) // data receiver
+        {
+          ASSERT_LT( responseIndex, numExpectedResponses );
+          ActualResponse response;
+          response.dataOpCode = op;
+          response.message = std::move( r );
+          rps[responseIndex++].set_value( std::move( response ) );
+        },
+      [&rps, &responseIndex, numExpectedResponses]( lb::url::ws::ConnectionID
+                                                  , lb::url::ws::ControlOpCode op
+                                                  , std::string r ) // control receiver
+        {
+          ActualResponse response;
+          response.controlOpCode = op;
+          response.message = std::move( r );
+          rps[responseIndex++].set_value( std::move( response ) );
+        }
     };
     struct Canary
     {
@@ -187,14 +187,14 @@ struct ChallengeConnection
         std::optional<lb::url::ws::ControlOpCode> expectedControlOpCode;
         if ( challenge == ping )
         {
-          const auto sendResult{ actualResponse.senders.sendPing( "" ) };
+          auto sendResult{ actualResponse.senders.sendPing( "" ) };
           expectedControlOpCode = lb::url::ws::ControlOpCode::ePong;
-          ASSERT_EQ( sendResult, lb::url::ws::SendResult::eSuccess );
+          ASSERT_EQ( sendResult.get(), lb::url::ws::SendResult::eSuccess );
         }
         else
         {
-          const auto sendResult{ actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, challenge ) };
-          ASSERT_EQ( sendResult, lb::url::ws::SendResult::eSuccess );
+          auto sendResult{ actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, challenge ) };
+          ASSERT_EQ( sendResult.get(), lb::url::ws::SendResult::eSuccess );
           if ( challenge == sendControlCloseMessage )
           {
             expectedControlOpCode = lb::url::ws::ControlOpCode::eClose;
@@ -238,7 +238,7 @@ struct ChallengeConnection
                                               lb::encoding::websocket::closestatus::ProtocolCode::eNormal )
                                           , clientCloseReason )
         };
-        EXPECT_EQ( sendResult, lb::url::ws::SendResult::eSuccess );
+        EXPECT_EQ( sendResult.get(), lb::url::ws::SendResult::eSuccess );
 
         const auto actualResponse{ rps[i].get_future().get() };
         testClosure( actualResponse, serverAskedToClose );
@@ -246,21 +246,21 @@ struct ChallengeConnection
 
       // Should not be able to send anything now.
       auto sendResult = actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, "blah" );
-      EXPECT_EQ( sendResult, lb::url::ws::SendResult::eClosed );
+      EXPECT_EQ( sendResult.get(), lb::url::ws::SendResult::eClosed );
       sendResult = actualResponse.senders.sendClose( lb::encoding::websocket::closestatus::toPayload(
                                                        lb::encoding::websocket::closestatus::ProtocolCode::eNormal ) );
-      EXPECT_EQ( sendResult, lb::url::ws::SendResult::eClosed );
+      EXPECT_EQ( sendResult.get(), lb::url::ws::SendResult::eClosed );
     }
     else if ( actualResponseCode == lb::url::ResponseCode::eFailure )
     {
       // Should not be able to send anything.
       auto sendResult = actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, "blah" );
-      EXPECT_EQ( sendResult, lb::url::ws::SendResult::eNoImplementation );
+      EXPECT_EQ( sendResult.get(), lb::url::ws::SendResult::eNoImplementation );
       sendResult =
           actualResponse.senders.sendClose( lb::encoding::websocket::closestatus::toPayload(
                                               lb::encoding::websocket::closestatus::ProtocolCode::eNormal )
                                           , "Test finished" );
-      EXPECT_EQ( sendResult, lb::url::ws::SendResult::eNoImplementation );
+      EXPECT_EQ( sendResult.get(), lb::url::ws::SendResult::eNoImplementation );
     }
   }
 
@@ -288,7 +288,7 @@ struct ChallengeConnection
 
 TEST(Ws, Requester_Challenges_Serial)
 {
-  lb::url::Requester requester{ { 1000 } };
+  lb::url::Requester requester;
 
   const auto& serverConfigs = serverList.at( httpd::ServerType::eWebSocket );
   for ( const auto serverConfig : serverConfigs )
@@ -355,7 +355,7 @@ void testRequesterDestruction( int port
 }
 
 TEST(Ws, Requester_Destruction)
-{  
+{
   const auto& serverConfigs = serverList.at( httpd::ServerType::eWebSocket );
   for ( const auto& serverConfig : serverConfigs )
   {
@@ -365,7 +365,7 @@ TEST(Ws, Requester_Destruction)
 
     // A close timeout shorter than the poll timeout should guarantee that the
     // close confirmation from the server will not be received, thereby testing
-    // that the connection is forvibly shutdown correctly.
+    // that the connection is forcibly shutdown correctly.
     testRequesterDestruction( serverConfig.port
                             , 200  // poll timeout
                             , 1 ); // close timeoue
@@ -409,8 +409,8 @@ TEST(Ws, Requester_Destruction)
     lb::url::ws::Response actualResponse{ connectionEstablishedPromise.get_future().get() };
 
     size_t i = 0;
-    const auto sendResult{ actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, "any old rubbish" ) };
-    EXPECT_EQ( sendResult, lb::url::ws::SendResult::eSuccess );
+    auto sendResult{ actualResponse.senders.sendData( lb::url::ws::DataOpCode::eText, "any old rubbish" ) };
+    EXPECT_EQ( sendResult.get(), lb::url::ws::SendResult::eSuccess );
 
     std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
   }

@@ -35,9 +35,9 @@ namespace ws
 const size_t Senders::UNLIMITED_FRAME_SIZE{ 0 };
 
 
-SendResult Senders::sendData( DataOpCode opCode
-                            , std::string message
-                            , size_t maxFrameSize ) const
+std::future<SendResult> Senders::sendData( DataOpCode opCode
+                                         , std::string message
+                                         , size_t maxFrameSize ) const
 {
   if ( d )
   {
@@ -45,12 +45,15 @@ SendResult Senders::sendData( DataOpCode opCode
   }
   else
   {
-    return SendResult::eNoImplementation;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eNoImplementation );
+    return promise.get_future();
   }
 }
 
-SendResult Senders::sendClose( encoding::websocket::closestatus::PayloadCode code
-                             , std::string reason ) const
+std::future<SendResult>
+Senders::sendClose( encoding::websocket::closestatus::PayloadCode code
+                  , std::string reason ) const
 {
   if ( d )
   {
@@ -58,11 +61,13 @@ SendResult Senders::sendClose( encoding::websocket::closestatus::PayloadCode cod
   }
   else
   {
-    return SendResult::eNoImplementation;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eNoImplementation );
+    return promise.get_future();
   }
 }
 
-SendResult Senders::sendPing( std::string payload ) const
+std::future<SendResult> Senders::sendPing( std::string payload ) const
 {
   if ( d )
   {
@@ -70,11 +75,13 @@ SendResult Senders::sendPing( std::string payload ) const
   }
   else
   {
-    return SendResult::eNoImplementation;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eNoImplementation );
+    return promise.get_future();
   }
 }
 
-SendResult Senders::sendPong( std::string payload ) const
+std::future<SendResult> Senders::sendPong( std::string payload ) const
 {
   if ( d )
   {
@@ -82,7 +89,9 @@ SendResult Senders::sendPong( std::string payload ) const
   }
   else
   {
-    return SendResult::eNoImplementation;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eNoImplementation );
+    return promise.get_future();
   }
 }
 

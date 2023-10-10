@@ -51,6 +51,8 @@ WebSocketHandler::WebSocketHandler( ws::Request r
 
 WebSocketHandler::~WebSocketHandler()
 {
+  // Nothing to do here, all clean up should be done before we return false
+  // from update().
 }
 
 RequestHandler::Status WebSocketHandler::respond( ResponseCode rc
@@ -71,19 +73,19 @@ RequestHandler::Status WebSocketHandler::respond( ResponseCode rc
       {
         senders
           = ws::Senders::Impl::create(
-            std::bind( &WebSocketHandler::sendData
+            std::bind( &WebSocketHandler::queueSendData
                      , this
                      , std::placeholders::_1
                      , std::placeholders::_2
                      , std::placeholders::_3 ),
-            std::bind( &WebSocketHandler::sendClose
+            std::bind( &WebSocketHandler::queueSendClose
                      , this
                      , std::placeholders::_1,
                        std::placeholders::_2 ),
-            std::bind( &WebSocketHandler::sendPing
+            std::bind( &WebSocketHandler::queueSendPing
                      , this
                      , std::placeholders::_1 ),
-            std::bind( &WebSocketHandler::sendPong
+            std::bind( &WebSocketHandler::queueSendPong
                      , this
                      , std::placeholders::_1 ) );
 
@@ -129,115 +131,33 @@ bool WebSocketHandler::update()
   //TimePoint nowDebug{ std::chrono::steady_clock::now() };
   //std::cout << request.url << ": update( " << nowDebug.time_since_epoch().count() * double(std::chrono::steady_clock::period::num)/ std::chrono::steady_clock::period::den << ")" << std::endl;
 
-  // Mutex scope
-  {
-    std::scoped_lock l{ mutex };
+  processPendingSends();
 
-    // Test for time-out while awaiting a close confirmation
-    switch ( closeHandshake )
-    {
-    case CloseHandshake::eNone:
-      // Fine, carry on.
-      break;
-    case CloseHandshake::eClientInitiated:
-      {
-        TimePoint now{ std::chrono::steady_clock::now() };
-        const auto diffMilliSeconds{ std::chrono::duration_cast<std::chrono::milliseconds>( now - closeSentTimePoint ) };
-        if ( diffMilliSeconds.count() > request.closeTimeoutMilliseconds )
-        {
-          std::cerr << "No close confirmation received within " << request.closeTimeoutMilliseconds
-                    << " milliseconds, destroying WebSocketHandler." << std::endl;
-          return false;
-        }
-      }
-      break;
-    case CloseHandshake::eServerInitiated:
-      // If we got here then the sendClose in the eNone clause in the switch in
-      // processFrame failed.
-      if ( sendClose( serverClosePayloadCode, serverCloseReason ) == ws::SendResult::eSuccess )
-      {
-        // Just go straight to complete as there is nothing more we can do as
-        // there is no confirmation of our echoing of the close control frame.
-        closeHandshake = CloseHandshake::eComplete;
-      }
-      --numRemainingCloseResponseAttempts;
-      if ( numRemainingCloseResponseAttempts == 0 )
-      {
-        std::cerr << "Failed to send close control echo back to server. Closing anyway." << std::endl;
-        closeHandshake = CloseHandshake::eComplete;
-        return false;
-      }
-      break;
-    case CloseHandshake::eComplete:
-      // Should never get here.
-      return false;
-    }
+  std::scoped_lock l{ mutex };
 
-    // May not receive a full message, only a frame. If the message fits in the
-    // one frame then we dispatch it right away, otherwise it gets built up in
-    // receivedMessage and dispatched on the last frame.
-    //
-    // We might not even get a full frame. We have to keep calling curl_ws_recv
-    // until either the number of bytes received is less than the buffer size or
-    // we get CURLE_GOT_NOTHING.
-    const curl_ws_frame* meta{ nullptr };
-    std::string frame;
-    bool frameIncomplete{ true };
-
-    int loop = 0;
-    while( frameIncomplete )
-    {
-      size_t numBytesReceived;
-      const size_t BUFFER_SIZE{ 256 };
-      char buffer[ BUFFER_SIZE ];
-
-      const CURLcode result = curl_ws_recv( easyHandle, buffer, sizeof(buffer), &numBytesReceived, &meta );
-
-      switch( result )
-      {
-      case CURLE_OK:
-      {
-        //std::cout << request.url << "  " << loop << " :CURLE_OK: " << numBytesReceived << " bytes." << std::endl;
-
-        frame.append( buffer, numBytesReceived );
-        if ( numBytesReceived < BUFFER_SIZE )
-        {
-          frameIncomplete = false;
-        }
-        break;
-      }
-      case CURLE_GOT_NOTHING:
-        // This means the connection is closed.
-        //std::cout << request.url << "  " << loop << " :CURLE_GOT_NOTHING" << std::endl;
-        return false;
-      case CURLE_AGAIN:
-        //std::cout << request.url << "  " << loop << " :CURLE_EAGAIN" << std::endl;
-        // Fine, just means there is no data to receive.
-        return true;
-      default:
-        ws::Senders::Impl::close( senders );
-        std::cerr << "curl_ws_recv error: " << curl_easy_strerror( result ) << std::endl;
-        return false;
-      }
-
-      ++loop;
-    }
-
-    if ( meta )
-    {
-      processFrame( *meta, frame );
-    }
-  } // End of mutex scope
-
-  // Do this after our mutex is unlocked as there could be threads who have
-  // called into senders (thereby locking its mutex) and are waiting for our
-  // mutex in one of our send methods.
-  if ( closeHandshake != CloseHandshake::eNone )
+  // Test for time-out while awaiting a close confirmation or resend our own
+  // confirmation if it failed on previous attempts.
+  if ( !maybeAdvanceCloseHandshake() )
   {
     ws::Senders::Impl::close( senders );
+    discardPendingSends();
+    return false;
   }
 
-  return closeHandshake != CloseHandshake::eComplete;
+  if ( !receive() )
+  {
+    ws::Senders::Impl::close( senders );
+    discardPendingSends();
+    return false;
+  }
+
+  const bool persist{ closeHandshake != CloseHandshake::eComplete };
+  if ( !persist )
+  {
+    discardPendingSends();
+  }
+
+  return persist;
 }
 
 bool WebSocketHandler::close()
@@ -254,9 +174,103 @@ bool WebSocketHandler::close()
   return true;
 }
 
+void WebSocketHandler::processPendingSends()
+{
+  std::scoped_lock l{ pendingSendMutex };
+
+  for ( auto& pendingSend : pendingSends )
+  {
+    if ( pendingSend.dataOpCode )
+    {
+      pendingSend.sendResultPromise.set_value(
+        sendData( *pendingSend.dataOpCode
+                , pendingSend.s
+                , pendingSend.maxFrameSize ) );
+    }
+    else if ( pendingSend.controlOpCode )
+    {
+      switch( *pendingSend.controlOpCode )
+      {
+      case ws::ControlOpCode::eClose:
+        pendingSend.sendResultPromise.set_value(
+          sendClose( pendingSend.closePayloadCode
+                   , pendingSend.s ) );
+        break;
+      case ws::ControlOpCode::ePing:
+        pendingSend.sendResultPromise.set_value(
+          sendPing( pendingSend.s ) );
+        break;
+      case ws::ControlOpCode::ePong:
+        pendingSend.sendResultPromise.set_value(
+          sendPong( pendingSend.s ) );
+      }
+    }
+    else
+    {
+      std::cerr << "Invalid pending send. Ignoring." << std::endl;
+    }
+  }
+
+  pendingSends.clear();
+}
+
+bool WebSocketHandler::maybeAdvanceCloseHandshake()
+{
+  // Assumes mutex is locked
+
+  switch ( closeHandshake )
+  {
+  case CloseHandshake::eNone:
+    // Fine, carry on.
+    break;
+  case CloseHandshake::eClientInitiated:
+  {
+    // Check if we've hit the timeout waiting for the server to confirm the close
+    TimePoint now{ std::chrono::steady_clock::now() };
+    const auto diffMilliSeconds
+    {
+      std::chrono::duration_cast<std::chrono::milliseconds>( now - closeSentTimePoint )
+    };
+    if ( diffMilliSeconds.count() > request.closeTimeoutMilliseconds )
+    {
+      std::cerr << "No close confirmation received within " << request.closeTimeoutMilliseconds
+                << " milliseconds, destroying WebSocketHandler." << std::endl;
+      return false;
+    }
+    break;
+  }
+  case CloseHandshake::eServerInitiated:
+    // If we got here then the sendClose in the eNone clause in the switch in
+    // processFrame failed (and numRemainingCloseResponseAttempts has already
+    // been decremented once).
+    if ( sendClose( serverClosePayloadCode, serverCloseReason ) == ws::SendResult::eSuccess )
+    {
+      // Just go straight to complete as there is nothing more we can do as
+      // there is no confirmation of our echoing of the close control frame.
+      closeHandshake = CloseHandshake::eComplete;
+    }
+
+    --numRemainingCloseResponseAttempts;
+    if ( numRemainingCloseResponseAttempts == 0 )
+    {
+      std::cerr << "Failed to send close control echo back to server. Closing anyway." << std::endl;
+      closeHandshake = CloseHandshake::eComplete;
+      return false;
+    }
+    break;
+  case CloseHandshake::eComplete:
+    // Should never get here.
+    return false;
+  }
+
+  return true;
+}
+
 void WebSocketHandler::processFrame( const curl_ws_frame& meta
                                    , const std::string& payload )
 {
+  // Assumes mutex is locked
+
   if ( meta.flags & CURLWS_TEXT )
   {
     //if ( FIN bit set )
@@ -314,6 +328,8 @@ void WebSocketHandler::processFrame( const curl_ws_frame& meta
     {
     case CloseHandshake::eNone:
     {
+      ws::Senders::Impl::close( senders );
+
       // If the code is the "absent" code what do we send back? - TODO
       serverClosePayloadCode = encoding::websocket::closestatus::decodePayloadCode( payload );
       serverCloseReason = payload.substr( 2 );
@@ -321,11 +337,12 @@ void WebSocketHandler::processFrame( const curl_ws_frame& meta
       {
         // Just go straight to complete as there is nothing more we can do as
         // there is no confirmation of our echoing of the close control frame.
-        closeHandshake = CloseHandshake::eComplete;
+        closeHandshake = CloseHandshake::eComplete;        
       }
       else
       {
         // Try again on next update()
+        --numRemainingCloseResponseAttempts;
         closeHandshake = CloseHandshake::eServerInitiated;
       }
       break;
@@ -376,18 +393,186 @@ void WebSocketHandler::processFrame( const curl_ws_frame& meta
   }
 }
 
+bool WebSocketHandler::receive()
+{
+  // Assumes mutex is locked
+
+  // May not receive a full message, only a frame. If the message fits in the
+  // one frame then we dispatch it right away, otherwise it gets built up in
+  // receivedMessage and dispatched on the last frame.
+  //
+  // We might not even get a full frame. We have to keep calling curl_ws_recv
+  // until either the number of bytes received is less than the buffer size or
+  // we get CURLE_GOT_NOTHING.
+  const curl_ws_frame* meta{ nullptr };
+  std::string frame;
+  bool frameIncomplete{ true };
+
+  int loop = 0;
+  while( frameIncomplete )
+  {
+    size_t numBytesReceived;
+    const size_t BUFFER_SIZE{ 256 };
+    char buffer[ BUFFER_SIZE ];
+
+    const CURLcode result = curl_ws_recv( easyHandle, buffer, sizeof(buffer), &numBytesReceived, &meta );
+
+    switch( result )
+    {
+    case CURLE_OK:
+    {
+      //std::cout << request.url << "  " << loop << " :CURLE_OK: " << numBytesReceived << " bytes." << std::endl;
+
+      frame.append( buffer, numBytesReceived );
+      if ( numBytesReceived < BUFFER_SIZE )
+      {
+        frameIncomplete = false;
+      }
+      break;
+    }
+    case CURLE_GOT_NOTHING:
+      // This means the connection is closed.
+      //std::cout << request.url << "  " << loop << " :CURLE_GOT_NOTHING" << std::endl;
+      return false;
+    case CURLE_AGAIN:
+      //std::cout << request.url << "  " << loop << " :CURLE_EAGAIN" << std::endl;
+      // Fine, just means there is no data to receive.
+      return true;
+    default:
+      ws::Senders::Impl::close( senders );
+      std::cerr << "curl_ws_recv error: " << curl_easy_strerror( result ) << std::endl;
+      return false;
+    }
+
+    ++loop;
+  }
+
+  if ( meta )
+  {
+    std::cout << "META Offset: " << meta->offset << ", bytes left: " << meta->bytesleft << std::endl;
+
+    processFrame( *meta, frame );
+  }
+
+  return true;
+}
+
+void WebSocketHandler::discardPendingSends()
+{
+  std::scoped_lock l{ pendingSendMutex };
+
+  for ( auto& pendingSend : pendingSends )
+  {
+    pendingSend.sendResultPromise.set_value( ws::SendResult::eClosed );
+  }
+
+  pendingSends.clear();
+}
+
+std::future<ws::SendResult> WebSocketHandler::queueSendData( ws::DataOpCode opCode
+                                                           , const std::string& message
+                                                           , size_t maxFrameSize )
+{
+  // Should not be necessary as we close the Senders::Impl but does no harm.
+  if ( closeHandshake != CloseHandshake::eNone )
+  {
+    std::promise<ws::SendResult> promise;
+    promise.set_value( ws::SendResult::eClosed );
+    return promise.get_future();
+  }
+
+  std::scoped_lock psl{ pendingSendMutex };
+
+  PendingSend pendingSend;
+  pendingSend.dataOpCode = opCode;
+  pendingSend.s = message;
+  pendingSend.maxFrameSize = maxFrameSize;
+
+  auto future{ pendingSend.sendResultPromise.get_future() };
+
+  pendingSends.emplace_back( std::move( pendingSend ) );
+
+  return future;
+}
+
+std::future<ws::SendResult>
+WebSocketHandler::queueSendClose( encoding::websocket::closestatus::PayloadCode code
+                                , const std::string& reason )
+{
+  // Should not be necessary as we close the Senders::Impl but does no harm.
+  if ( closeHandshake != CloseHandshake::eNone )
+  {
+    std::promise<ws::SendResult> promise;
+    promise.set_value( ws::SendResult::eClosed );
+    return promise.get_future();
+  }
+
+  std::scoped_lock psl{ pendingSendMutex };
+
+  PendingSend pendingSend;
+  pendingSend.controlOpCode = ws::ControlOpCode::eClose;
+  pendingSend.closePayloadCode = code;
+  pendingSend.s = reason;
+
+  auto future{ pendingSend.sendResultPromise.get_future() };
+
+  pendingSends.emplace_back( std::move( pendingSend ) );
+
+  return future;
+}
+
+std::future<ws::SendResult>
+WebSocketHandler::queueSendPing( const std::string &payload )
+{
+  // Should not be necessary as we close the Senders::Impl but does no harm.
+  if ( closeHandshake != CloseHandshake::eNone )
+  {
+    std::promise<ws::SendResult> promise;
+    promise.set_value( ws::SendResult::eClosed );
+    return promise.get_future();
+  }
+
+  std::scoped_lock psl{ pendingSendMutex };
+
+  PendingSend pendingSend;
+  pendingSend.controlOpCode = ws::ControlOpCode::ePing;
+  pendingSend.s = payload;
+
+  auto future{ pendingSend.sendResultPromise.get_future() };
+
+  pendingSends.emplace_back( std::move( pendingSend ) );
+
+  return future;
+}
+
+std::future<ws::SendResult>
+WebSocketHandler::queueSendPong( const std::string &payload )
+{
+  // Should not be necessary as we close the Senders::Impl but does no harm.
+  if ( closeHandshake != CloseHandshake::eNone )
+  {
+    std::promise<ws::SendResult> promise;
+    promise.set_value( ws::SendResult::eClosed );
+    return promise.get_future();
+  }
+
+  std::scoped_lock psl{ pendingSendMutex };
+
+  PendingSend pendingSend;
+  pendingSend.controlOpCode = ws::ControlOpCode::ePong;
+  pendingSend.s = payload;
+
+  auto future{ pendingSend.sendResultPromise.get_future() };
+
+  pendingSends.emplace_back( std::move( pendingSend ) );
+
+  return future;
+}
+
 ws::SendResult WebSocketHandler::sendData( ws::DataOpCode opCode
                                          , const std::string& message
                                          , size_t maxFrameSize )
 {
-  std::scoped_lock l{ mutex };
-
-  // Should not be necessary as we close the Senders::Impl but does no harm.
-  if ( closeHandshake != CloseHandshake::eNone )
-  {
-    return ws::SendResult::eClosed;
-  }
-
   size_t numBytesSent{};
   size_t numPayloadBytesToSend{ message.size() };
   size_t numPayloadBytesRemaining{ message.size() };
@@ -462,53 +647,37 @@ ws::SendResult WebSocketHandler::sendData( ws::DataOpCode opCode
 ws::SendResult WebSocketHandler::sendClose( encoding::websocket::closestatus::PayloadCode code
                                           , const std::string& reason )
 {
-  std::scoped_lock l{ mutex };
+    size_t numBytesSent{ 0 };
 
-  // Should not be necessary as we close the Senders::Impl but does no harm.
-  if ( closeHandshake != CloseHandshake::eNone )
-  {
-    return ws::SendResult::eClosed;
-  }
+    std::string payload{ "\0\0", 2 };
+    encoding::websocket::closestatus::encodePayloadCode( code, payload );
+    payload.append( reason );
 
-  size_t numBytesSent{ 0 };
+    const CURLcode result
+    {
+      curl_ws_send( easyHandle
+                  , payload.c_str()
+                  , payload.size()
+                  , &numBytesSent
+                  , 0
+                  , CURLWS_CLOSE )
+    };
 
-  std::string payload{ "\0\0", 2 };
-  encoding::websocket::closestatus::encodePayloadCode( code, payload );
-  payload.append( reason );
-
-  const CURLcode result
-  {
-    curl_ws_send( easyHandle
-                , payload.c_str()
-                , payload.size()
-                , &numBytesSent
-                , 0
-                , CURLWS_CLOSE )
-  };
-
-  switch( result )
-  {
-  case CURLE_OK:
-    closeHandshake = CloseHandshake::eClientInitiated;
-    closeSentTimePoint = std::chrono::steady_clock::now();
-    break;
-  default:
-    std::cerr << curl_easy_strerror( result ) << std::endl;
-    return ws::SendResult::eFailure;
-  }
-  return ws::SendResult::eSuccess;
+    switch( result )
+    {
+    case CURLE_OK:
+      closeHandshake = CloseHandshake::eClientInitiated;
+      closeSentTimePoint = std::chrono::steady_clock::now();
+      break;
+    default:
+      std::cerr << curl_easy_strerror( result ) << std::endl;
+      return ws::SendResult::eFailure;
+    }
+    return ws::SendResult::eSuccess;
 }
 
-ws::SendResult WebSocketHandler::sendPing( const std::string &payload )
+ws::SendResult WebSocketHandler::sendPing( const std::string& payload )
 {
-  std::scoped_lock l{ mutex };
-
-  // Should not be necessary as we close the Senders::Impl but does no harm.
-  if ( closeHandshake != CloseHandshake::eNone )
-  {
-    return ws::SendResult::eClosed;
-  }
-
   size_t numBytesSent{ 0 };
 
   if ( awaitingPong )
@@ -538,37 +707,29 @@ ws::SendResult WebSocketHandler::sendPing( const std::string &payload )
   return ws::SendResult::eSuccess;
 }
 
-ws::SendResult WebSocketHandler::sendPong( const std::string &payload )
+ws::SendResult WebSocketHandler::sendPong( const std::string& payload )
 {
-  std::scoped_lock l{ mutex };
-
-  // Should not be necessary as we close the Senders::Impl but does no harm.
-  if ( closeHandshake != CloseHandshake::eNone )
-  {
-    return ws::SendResult::eClosed;
-  }
-
   size_t numBytesSent{ 0 };
 
-  const CURLcode result
-  {
-    curl_ws_send( easyHandle
-                , payload.c_str()
-                , payload.size()
-                , &numBytesSent
-                , 0
-                , CURLWS_PONG )
-  };
-  switch( result )
-  {
-  case CURLE_OK:
-    break;
-  default:
-    std::cerr << curl_easy_strerror( result ) << std::endl;
-    return ws::SendResult::eFailure;
-  }
+   const CURLcode result
+   {
+     curl_ws_send( easyHandle
+                 , payload.c_str()
+                 , payload.size()
+                 , &numBytesSent
+                 , 0
+                 , CURLWS_PONG )
+   };
+   switch( result )
+   {
+   case CURLE_OK:
+     break;
+   default:
+     std::cerr << curl_easy_strerror( result ) << std::endl;
+     return ws::SendResult::eFailure;
+   }
 
-  return ws::SendResult::eSuccess;
+   return ws::SendResult::eSuccess;
 }
 
 

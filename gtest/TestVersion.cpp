@@ -23,7 +23,7 @@
 TEST(Library, Version)
 {
   const int major{ 1 };
-  const int minor{ 2 };
+  const int minor{ 3 };
   const int patch{ 0 };
 
   const int version{ ( major << 16 ) + ( minor <<  8 ) + ( patch <<  0 ) };

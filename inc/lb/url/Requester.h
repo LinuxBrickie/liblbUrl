@@ -48,7 +48,7 @@ class Requester
 public:
     struct Config
     {
-      size_t pollTimeoutMilliseconds{ 500 };
+      size_t pollTimeoutMilliseconds{ 50 };
     };
 
     static Config defaultConfig() { return Config{}; } // gcc bug workaround

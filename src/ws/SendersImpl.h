@@ -39,10 +39,10 @@ namespace ws
 
 struct Senders::Impl
 {
-  using DataSender  = std::function<SendResult( DataOpCode, const std::string&, size_t )>;
-  using CloseSender = std::function<SendResult( encoding::websocket::closestatus::PayloadCode
-                                              , const std::string& )>;
-  using PingSender  = std::function<SendResult( const std::string& )>;
+  using DataSender  = std::function< std::future<SendResult>( DataOpCode, const std::string&, size_t )>;
+  using CloseSender = std::function< std::future<SendResult>( encoding::websocket::closestatus::PayloadCode
+                                                            , const std::string& )>;
+  using PingSender  = std::function< std::future<SendResult>( const std::string& )>;
   using PongSender = PingSender;
 
   static Senders create( DataSender ds, CloseSender cs
@@ -72,9 +72,9 @@ struct Senders::Impl
   {
   }
 
-  SendResult sendData( DataOpCode opCode
-                     , const std::string& message
-                     , size_t maxFrameSize ) const
+  std::future<SendResult> sendData( DataOpCode opCode
+                                  , const std::string& message
+                                  , size_t maxFrameSize ) const
   {
     std::scoped_lock l{ mutex };
     if ( dataSender )
@@ -82,11 +82,14 @@ struct Senders::Impl
       return dataSender( opCode, message, maxFrameSize );
     }
 
-    return SendResult::eClosed;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eClosed );
+    return promise.get_future();
   }
 
-  SendResult sendClose( encoding::websocket::closestatus::PayloadCode code
-                      , const std::string& reason ) const
+   std::future<SendResult>
+     sendClose( encoding::websocket::closestatus::PayloadCode code
+              , const std::string& reason ) const
   {
     std::scoped_lock l{ mutex };
     if ( closeSender )
@@ -94,10 +97,12 @@ struct Senders::Impl
       return closeSender( code, reason );
     }
 
-    return SendResult::eClosed;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eClosed );
+    return promise.get_future();
   }
 
-  SendResult sendPing( const std::string& payload ) const
+   std::future<SendResult> sendPing( const std::string& payload ) const
   {
     std::scoped_lock l{ mutex };
     if ( pingSender )
@@ -105,10 +110,12 @@ struct Senders::Impl
       return pingSender( payload );
     }
 
-    return SendResult::eClosed;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eClosed );
+    return promise.get_future();
   }
 
-  SendResult sendPong( const std::string& payload ) const
+   std::future<SendResult> sendPong( const std::string& payload ) const
   {
     std::scoped_lock l{ mutex };
     if ( pongSender )
@@ -116,7 +123,9 @@ struct Senders::Impl
       return pongSender( payload );
     }
 
-    return SendResult::eClosed;
+    std::promise<SendResult> promise;
+    promise.set_value( SendResult::eClosed );
+    return promise.get_future();
   }
 
   /** \brief Called via Manager when WebSocketHandler can no longer service sends.
